@@ -3,13 +3,12 @@ import os
 
 from fastapi import FastAPI
 from starlette.middleware.cors import CORSMiddleware
-from starlette.requests import Request
 from starlette.staticfiles import StaticFiles
 from starlette.templating import Jinja2Templates
 
-from cadai.api.main import api_router
-from cadai.core.config import CORS_ORIGINS, API_TITLE, API_DESCRIPTION, BASE_PATH
-from cadai.scripts import load_datasets
+from .api.main import api_router
+from .core.config import CORS_ORIGINS, API_TITLE, API_DESCRIPTION, BASE_PATH
+from .scripts import load_datasets
 
 logger = logging.getLogger(__name__)
 logging.root.setLevel(level=logging.INFO)

@@ -1,4 +1,4 @@
-from cadai.store import DATASETS_STORE
+from ..store import DATASETS_STORE
 
 
 def get_ds():

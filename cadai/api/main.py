@@ -6,8 +6,8 @@ from starlette.requests import Request
 import xarray as xr
 import fsspec
 
-from cadai.store import DATASETS_STORE
-from cadai.api.utils import get_ds
+from ..store import DATASETS_STORE
+from .utils import get_ds
 
 logger = logging.getLogger(__name__)
 logging.root.setLevel(level=logging.INFO)
@@ -42,4 +42,5 @@ async def refresh_dataset(request: Request, dataset_id: str):
                 if r.path == f"/{dataset_id}":
                     request.app.routes.remove(r)
             request.app.mount(f"/{dataset_id}", DATASETS_STORE[dataset_id].app)
+            logger.info(f"Refresh completed: {dataset_id}.")
     return {"status": "success", "dataset_id": dataset_id}

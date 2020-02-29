@@ -1,6 +1,6 @@
 import logging
-from cadai.store import DATASETS_STORE
-from cadai.models import XRDataset
+from .store import DATASETS_STORE
+from .models import XRDataset
 
 logger = logging.getLogger(__name__)
 logging.root.setLevel(level=logging.INFO)
