@@ -1,0 +1,18 @@
+version: "3.2"
+
+services:
+  cadai:
+    build:
+      context: ./
+      dockerfile: ./Dockerfile
+    image: cormorack/cadai:${TAG}
+    environment:
+      - AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID}
+      - AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}
+      - DEVELOPMENT=True
+    volumes:
+      - ./cadai:/app
+    ports:
+      - 5000:5000
+    expose:
+      - 5000
