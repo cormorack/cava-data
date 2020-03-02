@@ -8,5 +8,8 @@ dependencies:
   - gunicorn
   - xarray
   - dask
-  - xpublish
   - s3fs
+  - numcodecs
+  - pip
+  - pip:
+    - git+https://github.com/lsetiawan/xpublish.git@encode_error
