@@ -72,7 +72,7 @@
                         <tr>
                             <th scope="row">{{ dataset.dataset_id }}</th>
                             <td>{{ dataset.zarr_url }}</td>
-                            <td><a href="{{ dataset.path }}/docs">Link</a></td>
+                            <td><a href="{{ dataset.path }}/">Link</a></td>
                             <td><button class="btn btn-outline-dark btn-sm" type="submit"
                                     onclick="reloadDataset(`{{ dataset.dataset_id }}`)">Reload</button></td>
                         </tr>

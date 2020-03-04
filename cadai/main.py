@@ -3,7 +3,7 @@ import os
 
 from dask.distributed import Client
 
-from fastapi import FastAPI, BackgroundTasks
+from fastapi import FastAPI
 from starlette.middleware.cors import CORSMiddleware
 from starlette.staticfiles import StaticFiles
 from starlette.templating import Jinja2Templates
@@ -16,7 +16,6 @@ logger = logging.getLogger(__name__)
 logging.root.setLevel(level=logging.INFO)
 
 app = FastAPI(title=API_TITLE, description=API_DESCRIPTION)
-client = Client()
 
 app.state.static = StaticFiles(directory=os.path.join(BASE_PATH, "static"))
 app.state.templates = Jinja2Templates(directory=os.path.join(BASE_PATH, "templates"))
@@ -35,4 +34,8 @@ app.mount("/static", app.state.static, name="static")
 
 @app.on_event("startup")
 async def startup_event():
+    logger.info("Starting up dask client...")
+    app.state.client = Client()
+    logger.info(app.state.client.cluster)
+    logger.info(app.state.client.cluster.dashboard_link)
     LoadDatasets(app)

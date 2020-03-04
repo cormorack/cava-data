@@ -12,4 +12,4 @@ dependencies:
   - numcodecs
   - pip
   - pip:
-    - git+https://github.com/lsetiawan/xpublish.git@encode_error
+    - git+https://github.com/jhamman/xpublish.git@master
