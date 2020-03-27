@@ -9,6 +9,7 @@ from starlette.staticfiles import StaticFiles
 from starlette.templating import Jinja2Templates
 
 from .api.main import api_router
+from .api.endpoints import data
 from .core.config import CORS_ORIGINS, API_TITLE, API_DESCRIPTION, BASE_PATH
 from .scripts import LoadDatasets
 
@@ -29,6 +30,9 @@ app.add_middleware(
 )
 
 app.include_router(api_router)
+app.include_router(
+    data.router, prefix="/data", tags=["data"],
+)
 app.mount("/static", app.state.static, name="static")
 
 

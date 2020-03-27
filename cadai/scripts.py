@@ -87,7 +87,7 @@ class LoadDatasets:
                 # Start the load operations and mark each future with its URL
                 future_to_url = {
                     executor.submit(self.load_dataset, url): url
-                    for url in self._urls
+                    for url in self._urls[:20]
                 }
                 for future in concurrent.futures.as_completed(future_to_url):
                     url = future_to_url[future]
@@ -100,11 +100,11 @@ class LoadDatasets:
 
     def load_dataset(self, url):
         try:
-            logger.info(f"Loading: {url}")
             xrd = XRDataset(url, mounted=True)
             xrd.set_ds()
             DATASETS_STORE[xrd.dataset_id] = xrd
             self._app.mount(f"/{xrd.dataset_id}", DATASETS_STORE[xrd.dataset_id].app)
+            logger.info(f"Loaded: {url}")
         except Exception as e:
             logger.warning(e)
             logger.info(f"Skipping: {url}")

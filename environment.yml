@@ -10,6 +10,10 @@ dependencies:
   - dask
   - s3fs
   - numcodecs
+  - datashader
+  - fsspec
+  - numba
+  - numpy
   - pip
   - pip:
     - git+https://github.com/jhamman/xpublish.git@master

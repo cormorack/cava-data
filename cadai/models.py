@@ -4,6 +4,19 @@ import fsspec
 import xarray as xr
 import xpublish  # noqa
 
+from pydantic import BaseModel
+
+
+class DataRequest(BaseModel):
+    ref: str
+    x: str
+    y: str
+    start_dt: str
+    end_dt: str
+    z: str = ""
+    color: str = ""
+    download_format: str = "netcdf"
+
 
 class XRDataset:
     def __init__(self, zarr_url, mounted=False):
@@ -35,10 +48,9 @@ class XRDataset:
     def app(self):
         if isinstance(self._ds, xr.Dataset):
             if self._mounted:
-                self._ds.rest.init_app(
+                self._ds.rest(app_kws=dict(
                     title=self._dataset_id,
-                    openapi_prefix=f"/{self._dataset_id}"
-                )
+                    openapi_prefix=f"/{self._dataset_id}"))
             return self._ds.rest.app
 
     @property
