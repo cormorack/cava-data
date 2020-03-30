@@ -8,6 +8,7 @@ dependencies:
   - gunicorn
   - xarray
   - dask
+  - netcdf4
   - s3fs
   - numcodecs
   - datashader

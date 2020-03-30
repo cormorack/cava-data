@@ -1,10 +1,12 @@
 import threading
 import logging
+import os
 import numpy as np
 from functools import reduce
 from dask import dataframe
 import datashader as ds
 import numba
+import xarray as xr
 
 from ...store import DATASETS_STORE, JOB_RESULTS
 
@@ -115,6 +117,17 @@ class DataFetcher:
         self._download = download
         self._download_format = download_format
 
+        if self._download:
+            import fsspec
+
+            self._fs = fsspec.filesystem("s3")
+            self._bucket = "io2data-test"
+            self._out_name = "__".join(
+                [v for v in sorted(set(axis_params.values())) if v]
+                + [self._start_dt, self._end_dt]
+            )
+            self._s3_fold = f"{self._bucket}/downloads/"
+
         # Setup parameters
         self._parameters = []
         self.setup_params()
@@ -158,75 +171,159 @@ class DataFetcher:
                 logger.warning(f"Result failed: {e}")
             self._in_progress = False
 
-    def _request_download_data(self, data_list, data_count):
-        # TODO: Need to implement data download
-        import time
+    def _nc_creator(self, mds, file_path):
+        mds.to_netcdf(file_path, engine="netcdf4")
 
+    def _csv_creator(self, mds, file_path):
+        mds.to_dataframe().to_csv(file_path)
+
+    def _json_creator(self, mds, file_path):
+        mds.to_dataframe().reset_index().to_json(file_path, orient="records")
+
+    def _file_creator(self, mds, ext=".nc"):
+        file_name = self._out_name + ext
+        file_path = "/tmp/" + file_name
+        s3_path = self._s3_fold + file_name
+        creators = {
+            ".nc": self._nc_creator,
+            ".csv": self._csv_creator,
+            ".json": self._json_creator,
+        }
         JOB_RESULTS[self._uuid].update(
             {"status": "in-progress", "msg": "Compiling data..."}
         )
-        time.sleep(10)
+        if not self._fs.exists(s3_path):
+            logger.info(f"Writing to local file: {file_path}")
+            # Use one of the creator above
+            creators[ext](mds, file_path)
+
+            # Upload to s3
+            if os.path.exists(file_path):
+                logger.info(f"Uploading to s3: {s3_path}")
+                self._fs.put(file_path, s3_path)
+                os.unlink(file_path)
+            else:
+                raise FileNotFoundError(f"{file_path} does not exists.")
+        else:
+            logger.info(f"{s3_path} exists.")
+
         JOB_RESULTS[self._uuid].update(
             {
                 "status": "completed",
-                "result": "https://path.to.file",
-                "msg": f"Download finished. Format: {self._download_format}",
+                "result": f"https://{self._bucket}.s3-us-west-2.amazonaws.com/downloads/{file_name}",
+                "msg": f"File download url created.",
             }
         )
 
+    def _request_download_data(self, data_list, data_count):
+        mds = self._fetch_and_merge(data_list)
+        if len(mds.time) == 0:
+            JOB_RESULTS[self._uuid].update(
+                {
+                    "status": "completed",
+                    "result": None,
+                    "msg": f"No data found for {self._start_dt} to {self._end_dt}",
+                }
+            )
+        else:
+            if self._download_format == "netcdf":
+                self._file_creator(mds, ext=".nc")
+            elif self._download_format == "csv":
+                self._file_creator(mds, ext=".csv")
+            elif self._download_format == "json":
+                self._file_creator(mds, ext=".json")
+            else:
+                raise TypeError(f"{self._download_format} is not a valid download format.")
+
         logger.info("Download completed.")
 
-    def _request_plot_data(self, data_list, data_count):
+    def _create_new_attrs(self, mds, sample):
+        from collections import OrderedDict
+        import datetime
+
+        new_attrs = OrderedDict()
+        new_attrs["acknowledgement"] = sample["summary"]
+        new_attrs["creator_name"] = sample["creator_name"]
+        new_attrs["creator_url"] = sample["creator_url"]
+        new_attrs["date_created"] = sample["date_created"]
+        new_attrs["date_downloaded"] = datetime.datetime.now().isoformat()
+        new_attrs["notes"] = sample["Notes"]
+        new_attrs["owner"] = sample["Owner"]
+        new_attrs["source_refs"] = ",".join(self._request_params)
+        new_attrs["time_coverage_start"] = np.datetime_as_string(mds.time.min())
+        new_attrs["time_coverage_end"] = np.datetime_as_string(mds.time.max())
+        new_attrs["uuid"] = str(self._uuid)
+
+        return new_attrs
+
+    def _fetch_and_merge(self, data_list):
         JOB_RESULTS[self._uuid].update(
-            {"status": "in-progress", "msg": "Creating dask dataframes..."}
+            {"status": "in-progress", "msg": "Creating merged dataset..."}
         )
         dflist = self._get_dflist(data_list)
+
         if len(dflist) > 1:
-            JOB_RESULTS[self._uuid].update(
-                {"msg": "Merging and finalizing dask dataframes..."}
-            )
-            final_df = self._merge_dataframes(dflist)
+            mds = self._merge_datasets(dflist)
         else:
-            JOB_RESULTS[self._uuid].update({"msg": "Finalizing dask dataframes..."})
-            final_df = dflist[0]
+            mds = dflist[0]
 
-        # Shading process
-        if data_count > MAX_POINTS:
+        if len(mds.time) > 0:
+            new_attrs = self._create_new_attrs(mds, dflist[0].attrs)
+            mds.attrs = new_attrs
+
+        return mds
+
+    def _request_plot_data(self, data_list, data_count):
+        mds = self._fetch_and_merge(data_list)
+        if len(mds.time) == 0:
             JOB_RESULTS[self._uuid].update(
-                {"msg": "Performing datashading and serializing results..."}
+                {
+                    "status": "completed",
+                    "result": None,
+                    "msg": f"No data found for {self._start_dt} to {self._end_dt}",
+                }
             )
-            x, y, z = perform_shading(
-                final_df,
-                self._axis_params,
-                start_date=get_seconds_since(self._start_dt),
-                end_date=get_seconds_since(self._end_dt),
-            )
-            shaded = True
         else:
-            JOB_RESULTS[self._uuid].update({"msg": "Serializing result..."})
-            x = _nan_to_nulls(final_df[self._axis_params["x"]].values.compute())
-            y = _nan_to_nulls(final_df[self._axis_params["y"]].values.compute())
-            if self._axis_params["z"]:
-                z = _nan_to_nulls(final_df[self._axis_params["z"]].values.compute())
+            mds["time"] = mds.time.astype(np.int64)
+            final_df = mds.to_dask_dataframe()
+
+            # Shading process
+            if data_count > MAX_POINTS:
+                JOB_RESULTS[self._uuid].update(
+                    {"msg": "Performing datashading and serializing results..."}
+                )
+                x, y, z = perform_shading(
+                    final_df,
+                    self._axis_params,
+                    start_date=get_seconds_since(self._start_dt),
+                    end_date=get_seconds_since(self._end_dt),
+                )
+                shaded = True
             else:
-                z = np.array([])
-            shaded = False
+                JOB_RESULTS[self._uuid].update({"msg": "Serializing result..."})
+                x = _nan_to_nulls(final_df[self._axis_params["x"]].values.compute())
+                y = _nan_to_nulls(final_df[self._axis_params["y"]].values.compute())
+                if self._axis_params["z"]:
+                    z = _nan_to_nulls(final_df[self._axis_params["z"]].values.compute())
+                else:
+                    z = np.array([])
+                shaded = False
 
-        if self._axis_params["x"] == "time":
-            x = np.array([self._seconds_to_date(time).astype(str) for time in x])
+            if self._axis_params["x"] == "time":
+                x = np.array([self._seconds_to_date(time).astype(str) for time in x])
 
-        result = (
-            {
-                "x": x.tolist(),
-                "y": y.tolist(),
-                "z": z.tolist(),
-                "count": data_count,
-                "shaded": shaded,
-            },
-        )
-        JOB_RESULTS[self._uuid].update(
-            {"status": "completed", "result": result, "msg": "Result finished.",}
-        )
+            result = (
+                {
+                    "x": x.tolist(),
+                    "y": y.tolist(),
+                    "z": z.tolist(),
+                    "count": data_count,
+                    "shaded": shaded,
+                },
+            )
+            JOB_RESULTS[self._uuid].update(
+                {"status": "completed", "result": result, "msg": "Result finished.",}
+            )
 
         logger.info("Result done.")
 
@@ -238,15 +335,17 @@ class DataFetcher:
                 dataset_id, self._start_dt, self._end_dt, self._parameters
             )
             count = len(dataset.time)
-            if not self._download:
-                # Convert to int for now for easier merge
-                dataset["time"] = dataset.time.astype(np.int64)
-                data_list[dataset_id] = {
-                    "data": dataset.to_dask_dataframe(),
-                    "count": count,
-                }
-            else:
-                data_list[dataset_id] = {"data": dataset, "count": count}
+            # if not self._download:
+            #     # Convert to int for now for easier merge
+            #     dataset["time"] = dataset.time.astype(np.int64)
+            #     data_list[dataset_id] = {
+            #         "data": dataset.to_dask_dataframe(),
+            #         "count": count,
+            #     }
+            # else:
+            #     data_list[dataset_id] = {"data": dataset, "count": count}
+
+            data_list[dataset_id] = {"data": dataset, "count": count}
 
             if count > highest_count:
                 highest_count = count
@@ -256,7 +355,28 @@ class DataFetcher:
         sorted_keys = sorted(
             data_list, key=lambda x: data_list[x]["count"], reverse=True
         )
-        return [data_list[k]["data"] for k in sorted_keys]
+        highest_key = sorted_keys[0]
+        dflist = []
+        for idx, k in enumerate(sorted_keys):
+            if idx == 0:
+                res = data_list[k]["data"]
+            else:
+                res = data_list[k]["data"].reindex_like(
+                    data_list[highest_key]["data"], method="nearest", tolerance="1s"
+                )
+            dflist.append(res)
+
+        return dflist
+
+    def _merge_datasets(self, dflist):
+        mergedds = xr.merge(dflist).unify_chunks()
+
+        # Delete old chunks
+        for k, v in mergedds.variables.items():
+            del v.encoding["chunks"]
+
+        # Rechunk the data
+        return mergedds.chunk({"time": 1024 ** 2})
 
     def _merge_dataframes(self, dflist, tol=5000000000):
         final_df = reduce(
