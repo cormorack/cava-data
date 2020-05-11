@@ -1,10 +1,10 @@
 import os
 
-import fsspec
 import xarray as xr
 import xpublish  # noqa
 
 from pydantic import BaseModel
+from .core.config import FILE_SYSTEMS
 
 
 class DataRequest(BaseModel):
@@ -24,6 +24,7 @@ class XRDataset:
         self._mounted = mounted
         self._dataset_id = ""
         self._ds = None
+        self._fs = FILE_SYSTEMS['aws_s3']
 
         self.setup()
 
@@ -48,9 +49,12 @@ class XRDataset:
     def app(self):
         if isinstance(self._ds, xr.Dataset):
             if self._mounted:
-                self._ds.rest(app_kws=dict(
-                    title=self._dataset_id,
-                    openapi_prefix=f"/{self._dataset_id}"))
+                self._ds.rest(
+                    app_kws=dict(
+                        title=self._dataset_id,
+                        openapi_prefix=f"/{self._dataset_id}",
+                    )
+                )
             return self._ds.rest.app
 
     @property
@@ -74,5 +78,8 @@ class XRDataset:
             self._ds = ds
         elif ds is None:
             self._ds = xr.open_zarr(
-                fsspec.get_mapper(self._zarr_url), consolidated=True
+                self._fs.get_mapper(self._zarr_url), consolidated=True
             )
+            for k, v in self._ds.variables.items():
+                if 'chunks' in v.encoding:
+                    del v.encoding['chunks']

@@ -1,12 +1,15 @@
 import threading
 import logging
 import os
+import sys
+import traceback
 import numpy as np
 from functools import reduce
 from dask import dataframe
 import datashader as ds
 import numba
 import xarray as xr
+import pandas as pd
 
 from ...store import DATASETS_STORE, JOB_RESULTS
 
@@ -53,11 +56,17 @@ def perform_shading(df, axis_params, start_date, end_date, high_res=False):
     )
     if axis_params["z"]:
         agg = cvs.points(
-            df, axis_params["x"], axis_params["y"], agg=ds.mean(axis_params["z"])
+            df,
+            axis_params["x"],
+            axis_params["y"],
+            agg=ds.mean(axis_params["z"]),
         )
     else:
         agg = cvs.points(
-            df, axis_params["x"], axis_params["y"], agg=ds.mean(axis_params["y"])
+            df,
+            axis_params["x"],
+            axis_params["y"],
+            agg=ds.mean(axis_params["y"]),
         )
 
     x = _nan_to_nulls(agg[axis_params["x"]].values)
@@ -121,7 +130,7 @@ class DataFetcher:
             import fsspec
 
             self._fs = fsspec.filesystem("s3")
-            self._bucket = "io2data-test"
+            self._bucket = "ooi-data-cadai"
             self._out_name = "__".join(
                 [v for v in sorted(set(axis_params.values())) if v]
                 + [self._start_dt, self._end_dt]
@@ -157,18 +166,22 @@ class DataFetcher:
                 "msg": f"Job {self._uuid} started.",
             }
             try:
-                JOB_RESULTS[self._uuid].update({"msg": "Retrieving data from store..."})
+                JOB_RESULTS[self._uuid].update(
+                    {"msg": "Retrieving data from store..."}
+                )
                 data_list, data_count = self._retrieve_data_list()
                 if not self._download:
                     self._request_plot_data(data_list, data_count)
                 else:
                     self._request_download_data(data_list, data_count)
             except Exception as e:
+                exc_info = sys.exc_info()
+                message = "".join(traceback.format_exception(*exc_info))
                 JOB_RESULTS[self._uuid].update(
                     {"status": "failed", "msg": f"Data retrieval failed: {e}"}
                 )
 
-                logger.warning(f"Result failed: {e}")
+                logger.warning(f"Result failed: {message}")
             self._in_progress = False
 
     def _nc_creator(self, mds, file_path):
@@ -233,7 +246,9 @@ class DataFetcher:
             elif self._download_format == "json":
                 self._file_creator(mds, ext=".json")
             else:
-                raise TypeError(f"{self._download_format} is not a valid download format.")
+                raise TypeError(
+                    f"{self._download_format} is not a valid download format."
+                )
 
         logger.info("Download completed.")
 
@@ -250,7 +265,9 @@ class DataFetcher:
         new_attrs["notes"] = sample["Notes"]
         new_attrs["owner"] = sample["Owner"]
         new_attrs["source_refs"] = ",".join(self._request_params)
-        new_attrs["time_coverage_start"] = np.datetime_as_string(mds.time.min())
+        new_attrs["time_coverage_start"] = np.datetime_as_string(
+            mds.time.min()
+        )
         new_attrs["time_coverage_end"] = np.datetime_as_string(mds.time.max())
         new_attrs["uuid"] = str(self._uuid)
 
@@ -290,7 +307,9 @@ class DataFetcher:
             # Shading process
             if data_count > MAX_POINTS:
                 JOB_RESULTS[self._uuid].update(
-                    {"msg": "Performing datashading and serializing results..."}
+                    {
+                        "msg": "Performing datashading and serializing results..."
+                    }
                 )
                 x, y, z = perform_shading(
                     final_df,
@@ -300,17 +319,27 @@ class DataFetcher:
                 )
                 shaded = True
             else:
-                JOB_RESULTS[self._uuid].update({"msg": "Serializing result..."})
-                x = _nan_to_nulls(final_df[self._axis_params["x"]].values.compute())
-                y = _nan_to_nulls(final_df[self._axis_params["y"]].values.compute())
+                JOB_RESULTS[self._uuid].update(
+                    {"msg": "Serializing result..."}
+                )
+                x = _nan_to_nulls(
+                    final_df[self._axis_params["x"]].values.compute()
+                )
+                y = _nan_to_nulls(
+                    final_df[self._axis_params["y"]].values.compute()
+                )
                 if self._axis_params["z"]:
-                    z = _nan_to_nulls(final_df[self._axis_params["z"]].values.compute())
+                    z = _nan_to_nulls(
+                        final_df[self._axis_params["z"]].values.compute()
+                    )
                 else:
                     z = np.array([])
                 shaded = False
 
             if self._axis_params["x"] == "time":
-                x = np.array([self._seconds_to_date(time).astype(str) for time in x])
+                x = np.array(
+                    [self._seconds_to_date(time).astype(str) for time in x]
+                )
 
             result = (
                 {
@@ -322,7 +351,11 @@ class DataFetcher:
                 },
             )
             JOB_RESULTS[self._uuid].update(
-                {"status": "completed", "result": result, "msg": "Result finished.",}
+                {
+                    "status": "completed",
+                    "result": result,
+                    "msg": "Result finished.",
+                }
             )
 
         logger.info("Result done.")
@@ -362,7 +395,9 @@ class DataFetcher:
                 res = data_list[k]["data"]
             else:
                 res = data_list[k]["data"].reindex_like(
-                    data_list[highest_key]["data"], method="nearest", tolerance="1s"
+                    data_list[highest_key]["data"],
+                    method="nearest",
+                    tolerance="1s",
                 )
             dflist.append(res)
 
@@ -388,5 +423,7 @@ class DataFetcher:
         return final_df
 
     def _seconds_to_date(self, time):
-        delta = np.timedelta64(np.int64(time * 1000 * 1000), "us")
-        return get_date(startdt, delta)
+        pdt = pd.to_datetime(time)
+        # delta = np.timedelta64(np.int64(time * 1000 * 1000), "us")
+        # return get_date(startdt, delta)
+        return pdt.to_numpy()
