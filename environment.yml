@@ -16,5 +16,8 @@ dependencies:
   - numba
   - numpy
   - pip
+  - xlrd
+  - fastparquet
   - pip:
     - git+https://github.com/jhamman/xpublish.git@master
+    - gspread

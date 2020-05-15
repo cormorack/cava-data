@@ -19,3 +19,11 @@ FILE_SYSTEMS = {
         config_kwargs={'max_pool_connections': 1000},
     ),
 }
+
+DATA_BUCKET = 'ooi-data'
+CADAI_BUCKET = 'ooi-data-cadai'
+SHIP_DATA_FOLDER = 'ship_data'
+SHIP_DATA_SOURCE = f'{SHIP_DATA_FOLDER}/source.json'
+SHIP_DATA_LABEL_MAP = f'{SHIP_DATA_FOLDER}/label_map.json'
+SHIP_DATA_PROFILES = f'{SHIP_DATA_FOLDER}/profiles'
+SHIP_DATA_DISCRETE = f'{SHIP_DATA_FOLDER}/discrete'

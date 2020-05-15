@@ -1,0 +1,96 @@
+apiVersion: v1
+kind: Service
+metadata:
+  annotations:
+    kompose.cmd: kompose convert -f ../docker-compose.yml
+    kompose.version: 1.16.0 (0c01309)
+  creationTimestamp: null
+  labels:
+    io.kompose.service: cadai-service
+  name: cadai-service
+spec:
+  ports:
+    - name: "http"
+      port: 80
+      targetPort: 5000
+  selector:
+    io.kompose.service: cadai-service
+status:
+  loadBalancer: {}
+---
+apiVersion: extensions/v1beta1
+kind: Ingress
+metadata:
+  name: cadai-service
+  annotations:
+    kubernetes.io/ingress.class: traefik
+    certmanager.k8s.io/issuer: "letsencrypt-prod"
+    certmanager.k8s.io/acme-challenge-type: http01
+spec:
+  tls:
+    - hosts:
+        - api-dev.ooica.net
+      secretName: web-server-backend-tls
+  rules:
+    - host: api-dev.ooica.net
+      http:
+        paths:
+          - path: /
+            backend:
+              serviceName: cadai-service
+              servicePort: http
+
+---
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  annotations:
+    kompose.cmd: kompose convert -f ../docker-compose.yml
+    kompose.version: 1.16.0 (0c01309)
+  creationTimestamp: null
+  labels:
+    io.kompose.service: cadai-service
+  name: cadai-service
+spec:
+  replicas: 1
+  strategy: {}
+  template:
+    metadata:
+      creationTimestamp: null
+      labels:
+        io.kompose.service: cadai-service
+    spec:
+      nodeSelector:
+        kops.k8s.io/instancegroup: harvest-nodes
+      containers:
+        - env:
+            - name: AWS_ACCESS_KEY_ID
+              valueFrom:
+                secretKeyRef:
+                  name: cava-secrets
+                  key: aws-access-key-id
+            - name: AWS_SECRET_ACCESS_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: cava-secrets
+                  key: aws-secret-access-key
+            - name: DEVELOPMENT
+              value: "True"
+            - name: GOOGLE_SERVICE_JSON
+              value: "cava-credentials/regional-cabled-array-3e2d547134f0.json"
+          image: cormorack/cadai:20200430
+          name: cadai-service
+          imagePullPolicy: Always
+          resources:
+            requests:
+              memory: "55Gi"
+              cpu: "7"
+            limits:
+              memory: "55Gi"
+              cpu: "7"
+          ports:
+            - containerPort: 5000
+      restartPolicy: Always
+      imagePullSecrets:
+        - name: gitlab-reg-auth
+status: {}

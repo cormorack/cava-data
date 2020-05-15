@@ -21,11 +21,20 @@ logging.root.setLevel(level=logging.INFO)
 
 
 # ------------------ Helper Functions ------------------------
+def _filter_time(ds, start_dt, end_dt):
+    arr = ds.time.data
+    idx_arr = np.where(
+        (arr >= pd.to_datetime(start_dt).to_datetime64())
+        & (arr <= pd.to_datetime(end_dt).to_datetime64())
+    )[0]
+    return ds.isel(time=idx_arr)
+
+
 def fetch_ds(dataset_id, start_dt, end_dt, parameters):
     xrd = DATASETS_STORE[dataset_id]
     dataset = xrd.dataset
 
-    partds = dataset.sel(time=slice(start_dt, end_dt))
+    partds = _filter_time(dataset, start_dt, end_dt)
     cols = [c for c in partds.data_vars if c in parameters]
     return partds[cols]
 
