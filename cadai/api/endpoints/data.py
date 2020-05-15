@@ -9,14 +9,14 @@ from ..utils import get_ds
 from ...models import DataRequest
 from .utils.helpers import perform_fetch
 from .download import router as download_router
+from .ship_data import router as ship_data_router
 
 logger = logging.getLogger(__name__)
 logging.root.setLevel(level=logging.INFO)
 
 router = APIRouter()
-router.include_router(
-    download_router, prefix="/download",
-)
+router.include_router(download_router, prefix="/download")
+router.include_router(ship_data_router, prefix="/ship")
 
 
 # ------------------ API ROUTES --------------------------------

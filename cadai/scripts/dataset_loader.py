@@ -1,9 +1,10 @@
 import concurrent.futures
-import threading
 import logging
-from .core.config import FILE_SYSTEMS
-from .store import DATASETS_STORE
-from .models import XRDataset
+
+from .baseloader import Loader
+from ..core.config import FILE_SYSTEMS
+from ..store import DATASETS_STORE
+from ..models import XRDataset
 
 logger = logging.getLogger(__name__)
 logging.root.setLevel(level=logging.INFO)
@@ -20,7 +21,7 @@ URLS = list(
 )
 
 
-class LoadDatasets:
+class LoadDatasets(Loader):
     """ Threading example class
     The run() method will be started and it will run in the background
     until the application exits.
@@ -31,13 +32,12 @@ class LoadDatasets:
         :type interval: int
         :param interval: Check interval, in seconds
         """
+        Loader.__init__(self)
         self._app = app
         self._urls = URLS
-        self._in_progress = True
+        self._name = "DatasetLoader"
 
-        thread = threading.Thread(target=self.run, args=())
-        thread.daemon = True  # Daemonize thread
-        thread.start()  # Start the execution
+        self.start()
 
     def run(self):
         """ Method that runs forever """
@@ -49,7 +49,7 @@ class LoadDatasets:
                 # Start the load operations and mark each future with its URL
                 future_to_url = {
                     executor.submit(self.load_dataset, url): url
-                    for url in self._urls[:20]
+                    for url in self._urls
                 }
                 for future in concurrent.futures.as_completed(future_to_url):
                     url = future_to_url[future]
