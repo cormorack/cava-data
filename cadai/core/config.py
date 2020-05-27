@@ -8,7 +8,7 @@ CORS_ORIGINS = [
     "http://localhost",
     "http://localhost:8000",
     "https://api-dev.ooica.net",
-    'https://api.interactiveoceans.washington.edu',
+    "https://api.interactiveoceans.washington.edu",
 ]
 
 BASE_PATH = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
