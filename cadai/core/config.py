@@ -4,7 +4,12 @@ import fsspec
 API_TITLE = "Cabled Array Data Access Interface"
 API_DESCRIPTION = "Cabled Array Data Streams"
 
-CORS_ORIGINS = ["http://localhost", "http://localhost:8000"]
+CORS_ORIGINS = [
+    "http://localhost",
+    "http://localhost:8000",
+    "https://api-dev.ooica.net",
+    'https://api.interactiveoceans.washington.edu',
+]
 
 BASE_PATH = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
