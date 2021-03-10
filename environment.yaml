@@ -2,14 +2,16 @@ name: app-env
 channels:
   - conda-forge
 dependencies:
-  - python=3.7
+  - python=3.8
   - fastapi
+  - aiofiles
   - uvicorn
   - gunicorn
+  - redis-py
   - xarray
   - dask
   - netcdf4
-  - s3fs
+  - s3fs>=0.5.2
   - numcodecs
   - datashader
   - fsspec
@@ -17,7 +19,12 @@ dependencies:
   - numpy
   - pip
   - xlrd
-  - fastparquet
+  - pyarrow
+  - toolz
+  - gspread
+  - loguru
+  - pika
+  - prometheus-fastapi-instrumentator
+  - pip=20
   - pip:
     - git+https://github.com/jhamman/xpublish.git@master
-    - gspread
