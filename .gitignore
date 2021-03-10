@@ -76,6 +76,8 @@ target/
 
 # Jupyter Notebook
 .ipynb_checkpoints
+# ignore notebooks folder for now
+notebooks
 
 # IPython
 profile_default/
@@ -130,3 +132,7 @@ dmypy.json
 
 # VSCODE
 .vscode/
+
+# dask
+dask-worker-space
+
