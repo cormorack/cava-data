@@ -26,6 +26,7 @@ dependencies:
   - toolz
   - gspread
   - loguru
+  - celery
   - pika
   - prometheus-fastapi-instrumentator
   - pip=20

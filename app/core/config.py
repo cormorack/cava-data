@@ -39,6 +39,12 @@ class Settings(BaseSettings):
     SHIP_DATA_DISCRETE: str = f'{SHIP_DATA_FOLDER}/discrete'
     DATA_CATALOG_FILE: str = "https://ooi-data.github.io/catalog.yaml"
 
+    # Message queue
+    RABBITMQ_URI: str = "amqp://guest@rabbitmq-service:5672//"
+
+    # Cache service
+    REDIS_URI: str = "redis://redis-service"
+
 
 API_TITLE = "Cabled Array Data Access Interface"
 API_DESCRIPTION = "Cabled Array Data Streams"
@@ -71,3 +77,5 @@ SHIP_DATA_SOURCE = f'{SHIP_DATA_FOLDER}/source.json'
 SHIP_DATA_LABEL_MAP = f'{SHIP_DATA_FOLDER}/label_map.json'
 SHIP_DATA_PROFILES = f'{SHIP_DATA_FOLDER}/profiles'
 SHIP_DATA_DISCRETE = f'{SHIP_DATA_FOLDER}/discrete'
+
+settings = Settings()

@@ -9,8 +9,8 @@ services:
       - 8080:80
       - 8787:8787
     command: /start-reload.sh
-    # volumes:
-      # - ../../:/app/:consistent
+    volumes:
+      - ../../:/app/:consistent
     environment:
       - AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID}
       - AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}
@@ -19,16 +19,32 @@ services:
       - GOOGLE_SERVICE_JSON=${GOOGLE_SERVICE_JSON}
     networks:
       - cava-network
+  celery-worker:
+    build:
+      context: ../../
+      dockerfile: ./resources/docker/Dockerfile
+    command: celery -A app.api.workers.tasks worker -E -l info -Q data-queue -c 1
+    volumes:
+      - ../../:/app/:consistent
+    environment:
+      - AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID}
+      - AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}
+    networks:
+      - cava-network
   redis-service:
     image: redis:alpine3.13
     ports:
       - 6379:6379
+    expose:
+      - 6379
     networks:
       - cava-network
   rabbitmq-service:
     image: rabbitmq:3-alpine
     ports:
       - 5672:5672
+    expose:
+      - 5672
     networks:
       - cava-network
 networks:

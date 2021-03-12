@@ -16,6 +16,7 @@ class DataRequest(BaseModel):
     z: str = ""
     color: str = ""
     download_format: str = "netcdf"
+    download: bool = False
 
 
 class XRDataset:

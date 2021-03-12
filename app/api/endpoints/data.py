@@ -11,9 +11,9 @@ import xarray as xr
 from ...store import JOB_RESULTS, CENTRAL_STORE
 from ..utils import get_ds
 from ...models import DataRequest
-from .utils.helpers import perform_fetch
 from .download import router as download_router
 from .ship_data import router as ship_data_router
+from ..workers.tasks import perform_fetch_task
 
 logger = logging.getLogger(__name__)
 logging.root.setLevel(level=logging.INFO)
@@ -100,21 +100,40 @@ async def view_data_stream_dataset(data_stream: str) -> Any:
 
 @router.get("/job/{uid}")
 def get_job(uid: str):
-    job_uuid = uuid.UUID(uid)
-    if job_uuid in JOB_RESULTS:
-        return JOB_RESULTS[job_uuid]
-    return {
-        "status": "error",
-        "result": None,
-        "msg": f"Job {job_uuid} not found.",
-    }
+    task = perform_fetch_task.AsyncResult(uid)
+    response = {}
+    if task.state == 'PENDING':
+        # job did not start yet
+        response.update(
+            {
+                'state': task.state,
+                'status': 'pending',
+                'result': None,
+                'msg': f'Job {uid} pending ...',
+            }
+        )
+    elif task.state != 'FAILURE':
+        # pending/success
+        response.update({'state': task.state})
+        response.update(task.info)
+    else:
+        # something went wrong in the background job
+        response.update(
+            {
+                'state': task.state,
+                'status': 'job-exception',
+                'result': None,
+                'msg': str(task.info),  # this is the exception raised
+            }
+        )
+    return response
 
 
 @router.post("/", status_code=202)
 def request_data(request: Request, data_request: DataRequest):
     try:
-        request_uuid = perform_fetch(data_request)
-
+        task = perform_fetch_task.apply_async(args=(data_request.dict(),))
+        request_uuid = task.id
         return {
             "status": "success",
             "job_uuid": str(request_uuid),

@@ -1,18 +1,17 @@
 import logging
 import os
 
-from dask.distributed import Client
 
 from fastapi import FastAPI
 from starlette.middleware.cors import CORSMiddleware
 from starlette.staticfiles import StaticFiles
 from starlette.templating import Jinja2Templates
-import intake
+
+from prometheus_fastapi_instrumentator import Instrumentator
 
 from .api.main import api_router
 from .api.endpoints import data
 from .core.config import Settings
-from .store import CENTRAL_STORE
 from .scripts import LoadDataCatalog, LoadShipData
 
 logging.root.setLevel(level=logging.INFO)
@@ -42,4 +41,9 @@ app.mount("/static", app.state.static, name="static")
 @app.on_event("startup")
 async def startup_event():
     LoadDataCatalog()
-    LoadShipData()
+    # LoadShipData()
+
+# Prometheus instrumentation
+Instrumentator().instrument(app).expose(
+    app, endpoint="/data/metrics", include_in_schema=False
+)
