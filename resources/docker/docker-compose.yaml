@@ -9,14 +9,20 @@ services:
       - 8080:80
       - 8787:8787
     command: /start-reload.sh
-    volumes:
-      - ../../app:/app:consistent
+    # volumes:
+      # - ../../:/app/:consistent
     environment:
       - AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID}
       - AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}
       - LOOP=asyncio
       - HTTP=h11
       - GOOGLE_SERVICE_JSON=${GOOGLE_SERVICE_JSON}
+    networks:
+      - cava-network
+  redis-service:
+    image: redis:alpine3.13
+    ports:
+      - 6379:6379
     networks:
       - cava-network
   rabbitmq-service:

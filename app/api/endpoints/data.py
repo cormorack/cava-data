@@ -1,10 +1,14 @@
 import logging
 import uuid
+from typing import Any
 from fastapi import APIRouter
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, HTMLResponse
 from starlette.requests import Request
+import yaml
 
-from ...store import JOB_RESULTS
+import xarray as xr
+
+from ...store import JOB_RESULTS, CENTRAL_STORE
 from ..utils import get_ds
 from ...models import DataRequest
 from .utils.helpers import perform_fetch
@@ -23,6 +27,75 @@ router.include_router(ship_data_router, prefix="/ship")
 @router.get("/")
 def list_datasets():
     return get_ds()
+
+# ------------ CATALOG ENDPOINTS ------------------------
+@router.get("/catalog")
+async def get_catalog(streams_only: bool = False) -> JSONResponse:
+    try:
+        if "intake_catalog" in CENTRAL_STORE:
+            catalog = CENTRAL_STORE["intake_catalog"]
+            if not streams_only:
+                result = yaml.load(catalog.yaml(), Loader=yaml.SafeLoader)[
+                    'sources'
+                ]
+                result[catalog.name].update({"data_streams": list(catalog)})
+            else:
+                result = {"data_streams": list(catalog)}
+            return JSONResponse(status_code=200, content=result)
+        else:
+            return JSONResponse(
+                status_code=200,
+                content={
+                    "message": "Catalog not available. Please try again in a few minutes."
+                },
+            )
+    except Exception as e:
+        return JSONResponse(
+            status_code=400, content={"message": f"{e}", "type": f"{type(e)}"}
+        )
+
+
+@router.get("/catalog/{data_stream}")
+async def view_data_stream_catalog(data_stream: str) -> Any:
+    try:
+        if "intake_catalog" in CENTRAL_STORE:
+            catalog = CENTRAL_STORE["intake_catalog"]
+            source = catalog[data_stream]
+            return JSONResponse(status_code=200, content=source.describe())
+        else:
+            return JSONResponse(
+                status_code=200,
+                content={
+                    "message": "Catalog not available. Please try again in a few minutes."
+                },
+            )
+    except Exception as e:
+        return JSONResponse(
+            status_code=400, content={"message": f"{e}", "type": f"{type(e)}"}
+        )
+
+
+@router.get("/catalog/{data_stream}/view")
+async def view_data_stream_dataset(data_stream: str) -> Any:
+    try:
+        if "intake_catalog" in CENTRAL_STORE:
+            catalog = CENTRAL_STORE["intake_catalog"]
+            dataset = catalog[data_stream].to_dask()
+
+            with xr.set_options(display_style='html'):
+                return HTMLResponse(dataset._repr_html_())
+        else:
+            return JSONResponse(
+                status_code=200,
+                content={
+                    "message": "Catalog not available. Please try again in a few minutes."
+                },
+            )
+    except Exception as e:
+        return JSONResponse(
+            status_code=400, content={"message": f"{e}", "type": f"{type(e)}"}
+        )
+# ------------ END CATALOG ENDPOINTS ------------------------
 
 
 @router.get("/job/{uid}")

@@ -9,9 +9,12 @@ dependencies:
   - gunicorn
   - redis-py
   - xarray
+  - zarr
   - dask
   - netcdf4
   - s3fs>=0.5.2
+  - intake
+  - intake-xarray
   - numcodecs
   - datashader
   - fsspec

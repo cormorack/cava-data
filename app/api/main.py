@@ -1,12 +1,16 @@
 import logging
 
 from fastapi import APIRouter
+from starlette import requests
 from starlette.requests import Request
+from starlette.responses import JSONResponse
 
 import xarray as xr
 import fsspec
+import intake
+import yaml
 
-from ..store import DATASETS_STORE
+from ..store import DATASETS_STORE, CENTRAL_STORE
 from .utils import get_ds
 
 logger = logging.getLogger(__name__)
@@ -36,7 +40,8 @@ async def refresh_dataset(request: Request, dataset_id: str):
             logger.info(f"Refreshing dataset: {dataset_id}.")
             ds = xr.open_zarr(
                 fsspec.get_mapper(DATASETS_STORE[dataset_id].zarr_url),
-                consolidated=True)
+                consolidated=True,
+            )
             DATASETS_STORE[dataset_id].set_ds(ds)
             for r in request.app.routes:
                 if r.path == f"/{dataset_id}":

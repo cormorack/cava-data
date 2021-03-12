@@ -7,25 +7,28 @@ from fastapi import FastAPI
 from starlette.middleware.cors import CORSMiddleware
 from starlette.staticfiles import StaticFiles
 from starlette.templating import Jinja2Templates
+import intake
 
 from .api.main import api_router
 from .api.endpoints import data
-from .core.config import CORS_ORIGINS, API_TITLE, API_DESCRIPTION, BASE_PATH
-from .scripts import LoadDatasets, LoadShipData
+from .core.config import Settings
+from .store import CENTRAL_STORE
+from .scripts import LoadDataCatalog, LoadShipData
 
-logger = logging.getLogger(__name__)
 logging.root.setLevel(level=logging.INFO)
+logger = logging.getLogger('uvicorn')
 
-app = FastAPI(title=API_TITLE, description=API_DESCRIPTION)
+settings = Settings()
+app = FastAPI(title=settings.API_TITLE, description=settings.API_DESCRIPTION)
 
-app.state.static = StaticFiles(directory=os.path.join(BASE_PATH, "static"))
+app.state.static = StaticFiles(directory=os.path.join(settings.BASE_PATH, "static"))
 app.state.templates = Jinja2Templates(
-    directory=os.path.join(BASE_PATH, "templates")
+    directory=os.path.join(settings.BASE_PATH, "templates")
 )
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=CORS_ORIGINS,
+    allow_origins=settings.CORS_ORIGINS,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -38,9 +41,5 @@ app.mount("/static", app.state.static, name="static")
 
 @app.on_event("startup")
 async def startup_event():
-    logger.info("Starting up dask client...")
-    app.state.client = Client()
-    logger.info(app.state.client.cluster)
-    logger.info(app.state.client.cluster.dashboard_link)
+    LoadDataCatalog()
     LoadShipData()
-    LoadDatasets(app)
