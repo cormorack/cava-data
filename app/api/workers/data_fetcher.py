@@ -304,7 +304,7 @@ def fetch(
             status_dict.update({"msg": "Serializing result..."})
             self.update_state(state="PROGRESS", meta=status_dict)
             if axis_params["x"] == "time":
-                x = mds[axis_params["x"]].data.astype(str).compute()
+                x = mds[axis_params["x"]].data.astype(str)
             else:
                 x = _nan_to_nulls(mds[axis_params["x"]].data.compute())
             y = _nan_to_nulls(mds[axis_params["y"]].data.compute())
