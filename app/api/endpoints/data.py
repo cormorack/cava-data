@@ -4,6 +4,7 @@ from typing import Any
 from fastapi import APIRouter
 from fastapi.responses import JSONResponse, HTMLResponse
 from starlette.requests import Request
+from starlette.routing import NoMatchFound
 import yaml
 
 import xarray as xr
@@ -109,7 +110,7 @@ def get_job(uid: str):
                 'state': task.state,
                 'status': 'pending',
                 'result': None,
-                'msg': f'Job {uid} pending ...',
+                'msg': f'Job {uid} has not started.',
             }
         )
     elif task.state != 'FAILURE':

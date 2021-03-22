@@ -1,10 +1,5 @@
 from app.core.celery_app import celery_app
-import time
-
-
-@celery_app.task
-def test_celery(word: str) -> str:
-    return f"test task return {word}"
+from .data_fetcher import fetch
 
 
 @celery_app.task(bind=True)
@@ -19,16 +14,6 @@ def perform_fetch_task(self, data_request):
     }
     download_format = data_request['download_format']
 
-    # TODO: Modify fetching to function not Object?
-    # DataFetcher(
-    #     request_uuid,
-    #     request_params,
-    #     axis_params,
-    #     data_request.start_dt,
-    #     data_request.end_dt,
-    #     download,
-    #     download_format,
-    # )
     job_type = "download" if download else "plot"
     status_dict = {
         "status": "started",
@@ -36,37 +21,27 @@ def perform_fetch_task(self, data_request):
         "type": job_type,
         "msg": "Data retrieval started.",
     }
-    self.update_state(
-        state="PROGRESS",
-        meta=status_dict,
+    start_dt = data_request['start_dt']
+    end_dt = data_request['end_dt']
+    result = fetch(
+        self,
+        request_params,
+        axis_params,
+        start_dt,
+        end_dt,
+        download,
+        download_format,
+        status_dict,
     )
-
-    time.sleep(1)
-    status_dict.update({"msg": "Retrieving data from store..."})
-    self.update_state(state="PROGRESS", meta=status_dict)
-
-    time.sleep(1)
-    status_dict.update(
-        {"msg": "Performing datashading and serializing results..."}
-    )
-    self.update_state(state="PROGRESS", meta=status_dict)
-
-    time.sleep(5)
-    status_dict.update({"msg": "Serializing result..."})
-    self.update_state(state="PROGRESS", meta=status_dict)
-
-    time.sleep(10)
-    result = (
-        {
-            "x": [],
-            "y": [],
-            "z": [],
-            "count": 0,
-            "shaded": False,
-        },
-    )
-    return {
-        "status": "completed",
-        "result": result,
-        "msg": "Result finished.",
-    }
+    if result is not None:
+        return {
+            "status": "completed",
+            "result": result,
+            "msg": "Result finished.",
+        }
+    else:
+        return {
+            "status": "completed",
+            "result": None,
+            "msg": f"No data found for {start_dt} to {end_dt}",
+        }

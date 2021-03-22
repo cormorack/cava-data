@@ -17,6 +17,7 @@ dependencies:
   - intake-xarray
   - numcodecs
   - datashader
+  - hvplot
   - fsspec
   - numba
   - numpy
