@@ -67,16 +67,26 @@ def perform_shading(df, axis_params, start_date, end_date, high_res=False):
     res = (540, 260)
     if high_res:
         res = (3840, 2160)
-    plot = df.hvplot.scatter(
-        x=axis_params["x"],
-        y=axis_params["y"],
-        color=axis_params["z"],
-        rasterize=True,
-        width=res[0],
-        height=res[1],
-        # xlim=x_range,
-        # ylim=y_range,
-    )
+
+    if axis_params["z"]:
+        plot = df.hvplot.scatter(
+            x=axis_params["x"],
+            y=axis_params["y"],
+            color=axis_params["z"],
+            rasterize=True,
+            width=res[0],
+            height=res[1],
+        )
+    else:
+        plot = df.hvplot.scatter(
+            x=axis_params["x"],
+            y=axis_params["y"],
+            color=axis_params["z"],
+            rasterize=True,
+            width=res[0],
+            height=res[1],
+            aggregator=ds.mean(axis_params["y"])
+        )
     agg = plot[()].data
     # cvs = ds.Canvas(
     #     x_range=x_range, y_range=y_range, plot_height=res[1], plot_width=res[0]
@@ -104,7 +114,7 @@ def perform_shading(df, axis_params, start_date, end_date, high_res=False):
     if axis_params["z"]:
         z = _nan_to_nulls(agg[f"{axis_params['x']}_{axis_params['y']} {axis_params['z']}"].data)  # noqa
     else:
-        z = np.array([])
+        z = _nan_to_nulls(agg[f"{axis_params['x']}_{axis_params['y']} {axis_params['y']}"].data)  # noqa
     return x, y, z
 
 
