@@ -28,15 +28,7 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v2
-      - name: Set Production Docker Tag
-        if: "contains(github.ref, 'refs/tags')"
-        run: |
-          DOCKER_TAG=$(echo "$GITHUB_REF" | sed 's/refs\/tags\///g')
-          IMAGE_SPEC_LATEST="${{ env.DOCKER_ORG }}/${{ env.IMAGE_NAME }}:latest"
-          echo "IMAGE_SPEC_LATEST=${IMAGE_SPEC_LATEST}" >> $GITHUB_ENV
-          echo "DOCKER_TAG=${DOCKER_TAG}" >> $GITHUB_ENV
       - name: Set Development Docker Tag
-        if: ${{ github.ref == 'refs/heads/dev' }}
         run: |
           SHA7="${GITHUB_SHA::7}"
           DOCKER_TAG=dev
