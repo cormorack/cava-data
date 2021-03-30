@@ -3,13 +3,11 @@ import logging
 import intake
 
 from .baseloader import Loader
-from ..core.config import Settings
+from ..core.config import settings
 from ..store import CENTRAL_STORE
 
 logging.root.setLevel(level=logging.INFO)
 logger = logging.getLogger('uvicorn')
-
-settings = Settings()
 
 
 class LoadDataCatalog(Loader):

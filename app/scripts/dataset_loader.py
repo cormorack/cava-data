@@ -2,7 +2,7 @@ import concurrent.futures
 import logging
 
 from .baseloader import Loader
-from ..core.config import FILE_SYSTEMS
+from ..core.config import settings
 from ..store import DATASETS_STORE
 from ..models import XRDataset
 
@@ -10,7 +10,7 @@ logger = logging.getLogger(__name__)
 logging.root.setLevel(level=logging.INFO)
 
 DATA_BUCKET = 'ooi-data'
-FS = FILE_SYSTEMS['aws_s3']
+FS = settings.FILE_SYSTEMS['aws_s3']
 
 # TODO: Grab straight from s3 using listdir.
 URLS = list(

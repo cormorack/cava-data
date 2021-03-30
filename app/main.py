@@ -11,14 +11,20 @@ from prometheus_fastapi_instrumentator import Instrumentator
 
 from .api.main import api_router
 from .api.endpoints import data
-from .core.config import Settings
+from .core.config import settings
 from .scripts import LoadDataCatalog, LoadShipData
 
 logging.root.setLevel(level=logging.INFO)
 logger = logging.getLogger('uvicorn')
 
-settings = Settings()
-app = FastAPI(title=settings.API_TITLE, description=settings.API_DESCRIPTION)
+app = FastAPI(
+    title=settings.SERVICE_NAME,
+    openapi_url=settings.OPENAPI_URL,
+    docs_url=settings.DOCS_URL,
+    redoc_url=None,
+    version=settings.CURRENT_API_VERSION,
+    description=settings.SERVICE_DESCRIPTION,
+)
 
 app.state.static = StaticFiles(directory=os.path.join(settings.BASE_PATH, "static"))
 app.state.templates = Jinja2Templates(
@@ -33,9 +39,9 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-app.include_router(api_router)
+# app.include_router(api_router)
 app.include_router(data.router, prefix="/data", tags=["data"])
-app.mount("/static", app.state.static, name="static")
+app.mount("/data/static", app.state.static, name="static")
 
 
 @app.on_event("startup")

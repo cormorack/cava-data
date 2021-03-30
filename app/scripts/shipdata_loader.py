@@ -11,12 +11,7 @@ import numpy as np
 import dask.dataframe as dd
 
 from .baseloader import Loader
-from ..core.config import (
-    SHIP_DATA_SOURCE,
-    SHIP_DATA_LABEL_MAP,
-    SHIP_DATA_PROFILES,
-    SHIP_DATA_DISCRETE,
-)
+from ..core.config import settings
 
 logger = logging.getLogger(__name__)
 logging.root.setLevel(level=logging.INFO)
@@ -108,8 +103,8 @@ class LoadShipData(Loader):
     def __init__(self):
         Loader.__init__(self)
         self._name = "ShipDataLoader"
-        self._ship_data_source = SHIP_DATA_SOURCE
-        self._ship_data_label_map = SHIP_DATA_LABEL_MAP
+        self._ship_data_source = settings.SHIP_DATA_SOURCE
+        self._ship_data_label_map = settings.SHIP_DATA_LABEL_MAP
         self._gspread_dir = os.path.join(
             os.path.expanduser("~"), '.config', 'gspread'
         )
@@ -219,12 +214,12 @@ class LoadShipData(Loader):
         addd = dd.from_pandas(all_discrete, npartitions=2)
 
         apdd.to_parquet(
-            f"s3://{self._cadai_bucket}/{SHIP_DATA_PROFILES}",
+            f"s3://{self._cadai_bucket}/{settings.SHIP_DATA_PROFILES}",
             write_index=False,
         )
 
         addd.to_parquet(
-            f"s3://{self._cadai_bucket}/{SHIP_DATA_DISCRETE}",
+            f"s3://{self._cadai_bucket}/{settings.SHIP_DATA_DISCRETE}",
             write_index=False,
         )
 

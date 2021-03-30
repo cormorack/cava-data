@@ -10,27 +10,20 @@ from fastapi import APIRouter
 from fastapi.responses import JSONResponse
 from starlette.requests import Request
 
-from ...core.config import (
-    CADAI_BUCKET,
-    SHIP_DATA_DISCRETE,
-    SHIP_DATA_PROFILES,
-    SHIP_DATA_SOURCE,
-    SHIP_DATA_LABEL_MAP,
-    FILE_SYSTEMS,
-)
+from ...core.config import settings
 
 
 logger = logging.getLogger(__name__)
 logging.root.setLevel(level=logging.INFO)
 
 router = APIRouter()
-FS = FILE_SYSTEMS['aws_s3']
+FS = settings.FILE_SYSTEMS['aws_s3']
 SHIP_S3_MAP = {
-    'profile': f"s3://{CADAI_BUCKET}/{SHIP_DATA_PROFILES}",
-    'discrete': f"s3://{CADAI_BUCKET}/{SHIP_DATA_DISCRETE}",
+    'profile': f"s3://{settings.CADAI_BUCKET}/{settings.SHIP_DATA_PROFILES}",
+    'discrete': f"s3://{settings.CADAI_BUCKET}/{settings.SHIP_DATA_DISCRETE}",
 }
 
-with FS.open(f'{CADAI_BUCKET}/{SHIP_DATA_LABEL_MAP}') as f:
+with FS.open(f'{settings.CADAI_BUCKET}/{settings.SHIP_DATA_LABEL_MAP}') as f:
     LABEL_MAP = json.load(f)
 
 
@@ -41,7 +34,7 @@ class ShipDataTypes(str, Enum):
 
 @router.get("/")
 def ship_data_details():
-    with FS.open(f'{CADAI_BUCKET}/{SHIP_DATA_SOURCE}') as f:
+    with FS.open(f'{settings.CADAI_BUCKET}/{settings.SHIP_DATA_SOURCE}') as f:
         source_json = json.load(f)
     return {
         "profiles_location": SHIP_S3_MAP['profile'],

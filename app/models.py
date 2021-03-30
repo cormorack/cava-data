@@ -4,7 +4,7 @@ import xarray as xr
 import xpublish  # noqa
 
 from pydantic import BaseModel
-from .core.config import FILE_SYSTEMS
+from .core.config import settings
 
 
 class DataRequest(BaseModel):
@@ -25,7 +25,7 @@ class XRDataset:
         self._mounted = mounted
         self._dataset_id = ""
         self._ds = None
-        self._fs = FILE_SYSTEMS['aws_s3']
+        self._fs = settings.FILE_SYSTEMS['aws_s3']
 
         self.setup()
 

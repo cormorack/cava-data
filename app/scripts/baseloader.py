@@ -1,7 +1,7 @@
 import threading
 import logging
 
-from ..core.config import FILE_SYSTEMS, DATA_BUCKET, CADAI_BUCKET
+from ..core.config import settings
 
 logging.root.setLevel(level=logging.INFO)
 
@@ -9,9 +9,9 @@ logging.root.setLevel(level=logging.INFO)
 class Loader:
     def __init__(self):
         self._in_progress = True
-        self._data_bucket = DATA_BUCKET
-        self._cadai_bucket = CADAI_BUCKET
-        self._fs = FILE_SYSTEMS['aws_s3']
+        self._data_bucket = settings.DATA_BUCKET
+        self._cadai_bucket = settings.CADAI_BUCKET
+        self._fs = settings.FILE_SYSTEMS['aws_s3']
         self._name = 'Loader'
         self._logger = logging.getLogger(self._name)
 
