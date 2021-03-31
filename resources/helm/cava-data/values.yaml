@@ -4,6 +4,7 @@
 nameOverride: cava-data
 # fullnameOverride: cava-media
 path: /data
+development: false
 service:
   targetPort: 80
   portName: http
@@ -53,7 +54,11 @@ ingress:
   # If secure, must provide tls
   secure: false
 
+  # host: "test.example.com"
+  host: ""
+
   # Adds tls for domain certification
+  # Certificate must be created ahead of time
   # tls:
-  #   certResolver: DEVELOPMENT
+  #   secretName: cava-data-cert
   tls: {}
