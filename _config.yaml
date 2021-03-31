@@ -1,0 +1,10 @@
+title: Interactive Oceans Data Service Helm charts for Kubernetes
+description: This site stores Helm chart tarballs for Interactive Oceans Data Service.
+theme: minima
+url: "https://cormorack.github.io/cava-data/"
+repo_name: cava-data
+
+exclude:
+  - Gemfile
+  - Gemfile.lock
+  - .gitignore
