@@ -2,7 +2,7 @@ name: Test Chart
 
 on:
   pull_request:
-    paths: ["resources/helm/cava-data/**", "**/test-chart.yml", ".ci-helpers/common"]
+    paths: ["resources/helm/cava-data/**", "**/test-chart.yaml", ".ci-helpers/common"]
   workflow_dispatch:
 
 defaults:
