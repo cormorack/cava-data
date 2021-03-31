@@ -46,9 +46,9 @@ class Settings(BaseSettings):
     DATA_CATALOG_FILE: str = "https://ooi-data.github.io/catalog.yaml"
 
     # Message queue
-    RABBITMQ_URI: str = "amqp://guest@rabbitmq-service:5672//"
+    RABBITMQ_URI: str = os.environ.get("RABBITMQ_URI", "amqp://guest@rabbitmq-service:5672//")
 
     # Cache service
-    REDIS_URI: str = "redis://redis-service"
+    REDIS_URI: str = os.environ.get("REDIS_URI", "redis://redis-service")
 
 settings = Settings()
