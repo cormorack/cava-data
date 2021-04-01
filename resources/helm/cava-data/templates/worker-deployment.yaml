@@ -1,4 +1,4 @@
-{{- $serviceName := default (include "cava-data.name" .) -}}
+{{- $serviceName := "cava-data-worker" -}}
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -7,7 +7,7 @@ metadata:
     {{- include "cava-data.labels" . | nindent 4 }}
     app.kubernetes.io/component: {{ $serviceName }}
 spec:
-  replicas: {{ .Values.replicas }}
+  replicas: {{ .Values.worker.replicas }}
   strategy:
     type: RollingUpdate
   selector:
@@ -20,7 +20,7 @@ spec:
         {{- include "cava-data.selectorLabels" . | nindent 8 }}
         app.kubernetes.io/component: {{ $serviceName }}
     spec:
-      {{- with .Values.nodeSelector }}
+      {{- with .Values.worker.nodeSelector }}
       nodeSelector:
         {{- toYaml . | nindent 8 }}
       {{- end }}
@@ -29,28 +29,34 @@ spec:
       restartPolicy: {{ .Values.restartPolicy }}
       containers:
         - name: {{ $serviceName }}
-          env:
-            # === Gunicorn Settings Hardcoded here ======
-            # Since fsspec doesn't support uvloop, defaults to asyncio for now ...
-            - name: WORKER_CLASS
-              value: "uvicorn.workers.UvicornH11Worker"
-            # Defaults to 1 worker per core so it can be scaled via multiple pods ...
-            # Set scaling with replicas of this pod
-            - name: WORKERS_PER_CORE
-              value: "1"
-            - name: WEB_CONCURRENCY
-              value: "1"
-            - name: MAX_WORKERS
-              value: "1" 
+          env: 
           {{- if .Values.env }}
             {{- toYaml .Values.env | nindent 12 }}
           {{- end }}
-          {{- if .Values.development }}
-          args: ["/start-reload.sh"]
+          {{- if .Values.worker.extra_env }}
+            {{- toYaml .Values.worker.extra_env | nindent 12 }}
           {{- end }}
+          args:
+            - celery 
+            - -A
+            {{- if .Values.worker.custom_tasks }}
+            - {{ .Values.worker.custom_tasks }}
+            {{- else }}
+            - app.api.workers.tasks
+            {{- end }} 
+            - worker 
+            - -E
+            - -l 
+            - info 
+            - -Q
+            {{- if .Values.worker.custom_queue }}
+            - {{ .Values.worker.custom_queue }}
+            {{- else }}
+            - data-queue
+            {{- end }} 
+            - -c 
+            - 1
           image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
           imagePullPolicy: {{ .Values.image.pullPolicy }}
           resources:
-            {{- toYaml .Values.resources | nindent 12 }}
-          ports:
-            - containerPort: {{ .Values.service.containerPort }}
+            {{- toYaml .Values.worker.resources | nindent 12 }}

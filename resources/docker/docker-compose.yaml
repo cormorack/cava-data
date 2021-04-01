@@ -30,7 +30,7 @@ services:
       - AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID}
       - AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}
       - REDIS_URI=redis://redis-service
-      - RABBITMQ_URI="amqp://guest@rabbitmq-service:5672//"
+      - RABBITMQ_URI=amqp://guest@rabbitmq-service:5672//
     networks:
       - cava-network
   redis-service:
