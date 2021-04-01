@@ -57,7 +57,16 @@ worker:
   nodeSelector: {}
   extra_env:
     - name: REDIS_URI
-      value: "redis://redis-service"
+      value: "redis://cava-data-redis-master"
     - name: RABBITMQ_URI
-      value: "amqp://guest@rabbitmq-service:5672//"
+      value: "amqp://guest@cava-data-rabbitmq:5672//"
   resources: {}
+
+rabbitmq:
+  enabled: true
+
+redis:
+  enabled: true
+  cluster:
+    enabled: false
+  usePassword: false

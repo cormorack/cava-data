@@ -5,6 +5,7 @@ services:
     build:
       context: ../../
       dockerfile: ./resources/docker/Dockerfile
+    image: cormorack/cava-data:${TAG}
     ports:
       - 8000:80
       - 8787:8787
@@ -23,6 +24,7 @@ services:
     build:
       context: ../../
       dockerfile: ./resources/docker/Dockerfile
+    image: cormorack/cava-data:${TAG}
     command: celery -A app.api.workers.tasks worker -E -l info -Q data-queue -c 1
     volumes:
       - ../../:/app/:consistent
