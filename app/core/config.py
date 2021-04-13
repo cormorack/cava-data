@@ -15,9 +15,14 @@ class Settings(BaseSettings):
     # API VERSION
     CURRENT_API_VERSION = 2.0
 
-    CORS_ORIGINS: List[str] = [
+    CORS_ORIGINS: List[str] = CORS_ORIGINS = [
         "http://localhost",
         "http://localhost:8000",
+        "http://localhost:5000",
+        "http://localhost:4000",
+        "https://appdev.ooica.net",
+        "https://app-dev.ooica.net",
+        "https://app.interactiveoceans.washington.edu",
         "https://api-dev.ooica.net",
         "https://api.interactiveoceans.washington.edu",
     ]
