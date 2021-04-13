@@ -15,7 +15,7 @@ class Settings(BaseSettings):
     # API VERSION
     CURRENT_API_VERSION = 2.0
 
-    CORS_ORIGINS: List[str] = CORS_ORIGINS = [
+    CORS_ORIGINS: List[str] = [
         "http://localhost",
         "http://localhost:8000",
         "http://localhost:5000",
