@@ -18,7 +18,7 @@ dependencies:
   - numcodecs
   - datashader
   - hvplot
-  - fsspec
+  - fsspec==0.8.7
   - numba
   - numpy
   - pip
