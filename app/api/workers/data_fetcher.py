@@ -278,7 +278,9 @@ def fetch(
     data_list, data_count = retrieve_data_list(
         request_params, start_dt, end_dt, parameters
     )
+    status_dict.update({"msg": "Reindexing datasets..."})
     dflist = _get_dflist(data_list)
+    status_dict.update({"msg": "Merging datasets..."})
     mds = _merge_datasets(dflist)
 
     if len(mds.time) == 0:
