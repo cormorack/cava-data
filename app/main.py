@@ -34,6 +34,8 @@ app.state.templates = Jinja2Templates(
 app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.CORS_ORIGINS,
+    # Regex for dev in netlify
+    allow_origin_regex='https://.*cava-portal\.netlify\.app',
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
