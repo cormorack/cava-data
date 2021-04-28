@@ -12,7 +12,7 @@ dependencies:
   - zarr
   - dask
   - netcdf4
-  - s3fs>=0.5.2
+  - s3fs==0.5.2
   - intake
   - intake-xarray
   - numcodecs
