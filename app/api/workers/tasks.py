@@ -1,3 +1,4 @@
+from dateutil import parser
 from app.core.celery_app import celery_app
 from .data_fetcher import fetch
 
@@ -21,8 +22,8 @@ def perform_fetch_task(self, data_request):
         "type": job_type,
         "msg": "Data retrieval started.",
     }
-    start_dt = data_request['start_dt']
-    end_dt = data_request['end_dt']
+    start_dt = parser.parse(data_request['start_dt'])
+    end_dt = parser.parse(data_request['end_dt'])
     result = fetch(
         self,
         request_params,
@@ -43,5 +44,5 @@ def perform_fetch_task(self, data_request):
         return {
             "status": "completed",
             "result": None,
-            "msg": f"No data found for {start_dt} to {end_dt}",
+            "msg": f"No data found for {start_dt.isoformat()} to {end_dt.isoformat()}",  # noqa
         }

@@ -1,3 +1,4 @@
+from datetime import datetime
 import threading
 import logging
 import os
@@ -6,9 +7,12 @@ import sys
 import traceback
 import numpy as np
 from functools import reduce
+import dask
 import dask.dataframe as dd
 import dask.array as da
-import datashader as ds
+from dask.diagnostics import ProgressBar
+import datashader
+from cftime import num2pydate, date2num
 import numba
 import xarray as xr
 import pandas as pd
@@ -16,6 +20,7 @@ import intake
 import zarr
 import fsspec
 import hvplot.xarray
+from dask.utils import memory_repr
 from ...core.config import settings
 
 from ...store import DATASETS_STORE, JOB_RESULTS
@@ -46,30 +51,13 @@ def fetch_ds(dataset_id, start_dt, end_dt, parameters):
     return partds[cols]
 
 
-def perform_shading(df, axis_params, start_date, end_date, high_res=False):
-    # if "time" not in axis_params.values():
-    #     df.drop("time", axis=1)
-    # Datashading
-    if axis_params["x"] == "time":
-        # x_range = (
-        #     df[axis_params["x"]].min().compute(),
-        #     df[axis_params["x"]].max().compute(),
-        # )
-        x_range = (start_date, end_date)
-    else:
-        x_range = (df[axis_params["x"]].min(), df[axis_params["x"]].max())
-        # x_range = ranges[axis_params["x"]]
-
-    # y_range = ranges[axis_params["y"]]
-    y_range = (df[axis_params["y"]].min(), df[axis_params["y"]].max())
-
-    # res = (2560, 1440)
-    res = (540, 260)
-    if high_res:
-        res = (3840, 2160)
+def perform_shading(ds: xr.Dataset, axis_params: dict):
+    """Perform datashading using hvplot xarray"""
+    # Default size of plotly plot in frontend
+    res = (888, 450)
 
     if axis_params["z"]:
-        plot = df.hvplot.scatter(
+        plot = ds.hvplot.scatter(
             x=axis_params["x"],
             y=axis_params["y"],
             color=axis_params["z"],
@@ -78,33 +66,16 @@ def perform_shading(df, axis_params, start_date, end_date, high_res=False):
             height=res[1],
         )
     else:
-        plot = df.hvplot.scatter(
+        plot = ds.hvplot.scatter(
             x=axis_params["x"],
             y=axis_params["y"],
             color=axis_params["z"],
             rasterize=True,
             width=res[0],
             height=res[1],
-            aggregator=ds.mean(axis_params["y"])
+            aggregator=datashader.mean(axis_params["y"]),
         )
     agg = plot[()].data
-    # cvs = ds.Canvas(
-    #     x_range=x_range, y_range=y_range, plot_height=res[1], plot_width=res[0]
-    # )
-    # if axis_params["z"]:
-    #     agg = cvs.points(
-    #         df,
-    #         axis_params["x"],
-    #         axis_params["y"],
-    #         agg=ds.mean(axis_params["z"]),
-    #     )
-    # else:
-    #     agg = cvs.points(
-    #         df,
-    #         axis_params["x"],
-    #         axis_params["y"],
-    #         agg=ds.mean(axis_params["y"]),
-    #     )
 
     if axis_params["x"] == "time":
         x = agg[axis_params["x"]].data.astype(str)
@@ -112,13 +83,22 @@ def perform_shading(df, axis_params, start_date, end_date, high_res=False):
         x = _nan_to_nulls(agg[axis_params["x"]].data)
     y = _nan_to_nulls(agg[axis_params["y"]].data)
     if axis_params["z"]:
-        z = _nan_to_nulls(agg[f"{axis_params['x']}_{axis_params['y']} {axis_params['z']}"].data)  # noqa
+        z = _nan_to_nulls(
+            agg[
+                f"{axis_params['x']}_{axis_params['y']} {axis_params['z']}"
+            ].data
+        )  # noqa
     else:
-        z = _nan_to_nulls(agg[f"{axis_params['x']}_{axis_params['y']} {axis_params['y']}"].data)  # noqa
+        z = _nan_to_nulls(
+            agg[
+                f"{axis_params['x']}_{axis_params['y']} {axis_params['y']}"
+            ].data
+        )  # noqa
     return x, y, z
 
 
 def _nan_to_nulls(values):
+    """Converts nan to null values"""
     arr = np.nan_to_num(values, nan=-999999)
     return np.where(arr == -999999, None, arr)
 
@@ -141,12 +121,118 @@ def get_timedelta(date1, date2):
     return date2 - date1
 
 
-def setup_params(axis_params):
+def setup_params(axis_params: dict) -> list:
+    """Collect the parameters from user axis params input"""
     parameters = [v for v in set(axis_params.values()) if v]
     if "time" not in parameters:
         parameters = parameters + ["time"]
 
     return parameters
+
+
+def filter_zarr(arr: zarr.Array, start: float, end: float) -> tuple:
+    """Filter zarr arrays by turning it to dask array first"""
+    darr = da.from_zarr(arr)
+    indexes = da.where((darr >= start) & (darr <= end))[0]
+    return darr[indexes], indexes
+
+
+def make_dataset(variables: dict, dims: dict) -> xr.Dataset:
+    """Create xarray dataset"""
+    return xr.Dataset(data_vars=variables, coords=dims)
+
+
+def _fetch_delayed_ds(dataset_id, start_dt, end_dt, parameters):
+    """Fetch the desire dataset"""
+    fmap = fsspec.get_mapper(
+        f's3://{settings.DATA_BUCKET}/{dataset_id}', anon=True
+    )
+    zg = zarr.open_consolidated(fmap)
+
+    # Parse zarr array group to determine dimensions
+    dim_arrays = {}
+    arrays = {}
+    for k in zg.array_keys():
+        arr = zg[k]
+        dims = arr.attrs['_ARRAY_DIMENSIONS']
+        if k in parameters:
+            if k in dims:
+                dim_arrays[k] = {
+                    'za': arr,
+                    'dims': dims,
+                    'size': memory_repr(arr.nbytes),
+                }
+            else:
+                arrays[k] = {
+                    'za': arr,
+                    'dims': dims,
+                    'size': memory_repr(arr.nbytes),
+                }
+
+    # Get indexes for desired dimension ... for now only handle time
+    delayed_dims = {}
+    delayed_indexes = {}
+    delayed_count = None
+    for k, v in dim_arrays.items():
+        if k == 'time':
+            time_arr = v['za']
+            # Get time units
+            time_units = 'seconds since 1900-01-01 00:00:00'
+            if 'units' in time_arr.attrs:
+                time_units = time_arr.attrs['units']
+
+            start_num, end_num = date2num([start_dt, end_dt], time_units)
+            time_darr, indexes = filter_zarr(time_arr, start_num, end_num)
+
+            darr = dask.delayed(num2pydate)(time_darr, time_units)
+            delayed_count = darr.shape[0]
+        else:
+            darr, indexes = filter_zarr(v['za'], v['za'][0], v['za'][-1])
+
+        delayed_indexes[k] = indexes
+        delayed_dims[k] = darr
+
+    # Get variables from filtered indexes
+    delayed_variables = {}
+    for k, v in arrays.items():
+        selections = tuple(delayed_indexes[d] for d in v['dims'])
+        delayed_variables[k] = (v['dims'], da.from_zarr(v['za'])[selections])
+
+    # Create delayed xarray dataset
+    delayed_ds = dask.delayed(make_dataset)(delayed_variables, delayed_dims)
+    return delayed_ds, delayed_count
+
+
+def _serialize_dataset(mds, data_count, axis_params, max_points=500000):
+    if len(mds.time) == 0:
+        result = {}
+    else:
+        # Shading process
+        if data_count > max_points:
+            x, y, z = perform_shading(mds, axis_params)
+            shaded = True
+        else:
+            if axis_params["x"] == "time":
+                x = mds[axis_params["x"]].data.astype(str)
+            else:
+                x = _nan_to_nulls(mds[axis_params["x"]].data)
+            y = _nan_to_nulls(mds[axis_params["y"]].data)
+            if axis_params["z"]:
+                z = _nan_to_nulls(mds[axis_params["z"]].data)
+            else:
+                z = np.array([])
+            shaded = False
+
+        result = (
+            {
+                "x": x.tolist(),
+                "y": y.tolist(),
+                "z": z.tolist(),
+                "count": data_count,
+                "shaded": shaded,
+            },
+        )
+    return result
 
 
 def _fetch_ds(dataset_id, start_dt, end_dt, parameters):
@@ -272,62 +358,39 @@ def fetch(
     if "time" not in parameters:
         parameters.append("time")
 
+    # ================ Delayed retrieval ======================
     status_dict.update({"msg": "Retrieving data from store..."})
     self.update_state(state="PROGRESS", meta=status_dict)
+    data_list = {}
+    for dataset_id in request_params:
+        delayed_ds, delayed_count = _fetch_delayed_ds(
+            dataset_id, start_dt, end_dt, parameters
+        )
+        data_list[dataset_id] = {"data": delayed_ds, "count": delayed_count}
+    # ================ End Delayed retrieval ====================
 
-    data_list, data_count = retrieve_data_list(
-        request_params, start_dt, end_dt, parameters
-    )
+    # ================ Delayed reindex ==========================
     status_dict.update({"msg": "Reindexing datasets..."})
     self.update_state(state="PROGRESS", meta=status_dict)
-    dflist = _get_dflist(data_list)
+    dflist = dask.delayed(_get_dflist)(data_list)
+    # ================ End Delayed reindex =======================
+
+    # ================ Delayed merge =============================
     status_dict.update({"msg": "Merging datasets..."})
     self.update_state(state="PROGRESS", meta=status_dict)
-    mds = _merge_datasets(dflist)
+    # NOTE: For download, this is the only thing needed!
+    mds = dask.delayed(_merge_datasets)(dflist)
+    # ================ End Delayed merge =========================
 
-    if len(mds.time) == 0:
-        result = None
-    else:
-        # mds["time"] = mds.time.astype(np.int64)
-        # final_df = mds.to_dask_dataframe()
-
-        # Shading process
-        if data_count > MAX_POINTS:
-            status_dict.update(
-                {"msg": "Performing datashading and serializing results..."}
-            )
-            self.update_state(state="PROGRESS", meta=status_dict)
-            x, y, z = perform_shading(
-                mds,
-                axis_params,
-                start_date=get_seconds_since(start_dt),
-                end_date=get_seconds_since(end_dt),
-            )
-            shaded = True
-        else:
-            status_dict.update({"msg": "Serializing result..."})
-            self.update_state(state="PROGRESS", meta=status_dict)
-            if axis_params["x"] == "time":
-                x = mds[axis_params["x"]].data.astype(str)
-            else:
-                x = _nan_to_nulls(mds[axis_params["x"]].data.compute())
-            y = _nan_to_nulls(mds[axis_params["y"]].data.compute())
-            if axis_params["z"]:
-                z = _nan_to_nulls(mds[axis_params["z"]].data.compute())
-            else:
-                z = np.array([])
-            shaded = False
-
-        result = (
-            {
-                "x": x.tolist(),
-                "y": y.tolist(),
-                "z": z.tolist(),
-                "count": data_count,
-                "shaded": shaded,
-            },
-        )
+    # ================ Compute results ===========================
+    status_dict.update({"msg": "Serializing results..."})
+    self.update_state(state="PROGRESS", meta=status_dict)
+    delayed_result = dask.delayed(_serialize_dataset)(
+        mds, delayed_count, axis_params
+    )
+    result = delayed_result.compute()
     logger.info("Result done.")
+    # ================ End Compute results ========================
     return result
 
 
