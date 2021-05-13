@@ -22,8 +22,8 @@ def perform_fetch_task(self, data_request):
         "type": job_type,
         "msg": "Data retrieval started.",
     }
-    start_dt = parser.parse(data_request['start_dt'])
-    end_dt = parser.parse(data_request['end_dt'])
+    start_dt = data_request['start_dt']
+    end_dt = data_request['end_dt']
     result = fetch(
         self,
         request_params,
