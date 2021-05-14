@@ -3,6 +3,7 @@ import numpy as np
 import xarray as xr
 import zarr
 import fsspec
+import datashader
 import hvplot.xarray  # noqa
 from .models import OOIDataset
 
@@ -74,16 +75,43 @@ def _plot_merged_dataset(
     rasterize = True if len(merged.time) > shade_threshold else False
 
     plot_params = {_change_z(k): v for k, v in axis_params.items()}
-    color_column = (
-        f"{plot_params['x']}_{plot_params['y']} {plot_params['color']}"
-    )
 
-    plot = merged.hvplot.scatter(
-        rasterize=rasterize,
-        width=plot_size[0],
-        height=plot_size[1],
-        **plot_params,
-    )
+    # To filter resulting dataframe only grab non-empty parameters
+    column_filter = [v for k, v in plot_params.items() if v]
+
+    if plot_params["color"]:
+        color_column = (
+            f"{plot_params['x']}_{plot_params['y']} {plot_params['color']}"
+        )
+        plot = merged.hvplot.scatter(
+            rasterize=rasterize,
+            width=plot_size[0],
+            height=plot_size[1],
+            **plot_params,
+        )
+    elif rasterize:
+        color_column = (
+            f"{plot_params['x']}_{plot_params['y']} {plot_params['y']}"
+        )
+        plot = merged.hvplot.scatter(
+            rasterize=True,
+            width=plot_size[0],
+            height=plot_size[1],
+            aggregator=datashader.mean(column=plot_params["y"]),
+            colorbar=False,
+            **plot_params,
+        )
+        # Add the third column when it's shaded but only 2 params
+        column_filter = column_filter + [color_column]
+    else:
+        color_column = None
+        plot = merged.hvplot.scatter(
+            rasterize=False,
+            width=plot_size[0],
+            height=plot_size[1],
+            color="blue",
+            **{k: v for k, v in plot_params.items() if k != "color"},
+        )
 
     df = plot[()].dframe()
     if "time" in df:
@@ -92,7 +120,7 @@ def _plot_merged_dataset(
     if plot_params["color"]:
         final_df = df.rename(columns={color_column: plot_params['color']})
     else:
-        final_df = df[[v for k, v in plot_params.items() if v]]
+        final_df = df[column_filter]
 
     final_dct = final_df.to_dict(orient='list')
     final_dct = {
@@ -100,7 +128,7 @@ def _plot_merged_dataset(
         for var, values in final_dct.items()
     }
 
-    return final_dct, rasterize
+    return final_dct, rasterize, color_column
 
 
 def fetch_zarr(zarr_url, storage_options={'anon': True}):
@@ -158,12 +186,16 @@ def fetch(
         result = None
     else:
         # Shading process
-        final_dct, shaded = _plot_merged_dataset(merged, axis_params)
+        final_dct, shaded, color_column = _plot_merged_dataset(
+            merged, axis_params
+        )
         x = final_dct.get(axis_params['x'], [])
         y = final_dct.get(axis_params['y'], [])
         z = []
         if axis_params['z']:
             z = final_dct.get(axis_params['z'], np.array([]))
+        elif shaded:
+            z = final_dct.get(color_column, np.array([]))
 
         result = (
             {
