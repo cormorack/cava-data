@@ -3,6 +3,10 @@ channels:
   - conda-forge
 dependencies:
   - python=3.8
+  - python-blosc
+  - cytoolz
+  - lz4
+  - nomkl
   - fastapi
   - aiofiles
   - uvicorn
