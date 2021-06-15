@@ -1,6 +1,8 @@
+import bisect
 import copy
 import itertools as it
 from dateutil import parser
+from typing import Union
 import fsspec
 import zarr
 import numpy as np
@@ -28,6 +30,7 @@ class OOIDataset:
         self.dataset = None
 
         self._total_size = None
+        self._total_size_repr = None
         self._zarr_group = None
         self._dataset_dict = {"variables": {}, "dims": []}
 
@@ -41,7 +44,7 @@ class OOIDataset:
         self._set_variables()
 
     def __repr__(self):
-        text_arr = [f"<{self.dataset_id}: {self._total_size}>"]
+        text_arr = [f"<{self.dataset_id}: {self._total_size_repr}>"]
         text_arr.append(f"Dimensions: ({', '.join(self.dimensions)})")
         variables_arr = "\n    ".join([name for name in self.variables.keys()])
         text_arr.append(f"Data variables: \n    {variables_arr}")
@@ -64,9 +67,10 @@ class OOIDataset:
             **self.storage_options,
         )
         self._zarr_group = zarr.open_consolidated(fmap)
-        self._total_size = memory_repr(
-            np.sum([arr.nbytes for _, arr in self._zarr_group.items()])
+        self._total_size = np.sum(
+            [arr.nbytes for _, arr in self._zarr_group.items()]
         )
+        self._total_size_repr = memory_repr(self._total_size)
 
     def _parse_zarr_group(self):
         all_dims = []
@@ -113,6 +117,17 @@ class OOIDataset:
             data_vars[k] = v.isel(**key)
         return data_vars
 
+    def _in_time_range(
+        self, time_filter: Union[list, tuple], time_range: Union[list, tuple]
+    ) -> bool:
+        """Checks whether the time filter is within the data time range"""
+        in_range_idx = 1
+        sorted_time_range = sorted(time_range)
+        in_range_list = [
+            bisect.bisect(sorted_time_range, t) for t in sorted(time_filter)
+        ]
+        return any(i for i in in_range_list if i == in_range_idx)
+
     def _create_dataset(self, data_vars: dict) -> xr.Dataset:
         data_vars = {
             k: self._set_time_attrs(
@@ -151,7 +166,9 @@ class OOIDataset:
         self._set_variables()
         return self
 
-    def sel(self, indexers: dict = None, **indexers_kwargs):
+    def sel(
+        self, indexers: dict = None, use_attrs: bool = False, **indexers_kwargs
+    ):
         # TODO: Figure out how to handle one indexer instead of start, end
         indexers = either_dict_or_kwargs(indexers, indexers_kwargs, "sel")
 
@@ -179,6 +196,30 @@ class OOIDataset:
                 self.__time_filter, _, _ = xr.coding.times.encode_cf_datetime(
                     [start_dt, end_dt], time_units, calendar
                 )
+
+                if use_attrs:
+                    # Time range checking, doesn't create xr.Dataset
+                    # when it's empty
+                    # TODO: Update all zarr data streams with the correct
+                    #       time coverage attributes based on time values!
+                    #       Optional for now until the attributes are updated.
+                    time_range, _, _ = xr.coding.times.encode_cf_datetime(
+                        [
+                            parser.parse(
+                                self.global_attributes['time_coverage_start']
+                            ),
+                            parser.parse(
+                                self.global_attributes['time_coverage_end']
+                            ),
+                        ],
+                        time_units,
+                        calendar,
+                    )
+                    in_time_range = self._in_time_range(
+                        time_filter=self.__time_filter, time_range=time_range
+                    )
+                    if not in_time_range:
+                        return self
 
                 indexers[k] = self.__time_filter
 

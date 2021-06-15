@@ -1,0 +1,60 @@
+{{- $serviceName := "cava-data-worker" -}}
+kind: Role
+apiVersion: rbac.authorization.k8s.io/v1beta1
+metadata:
+  name: {{ $serviceName }}
+rules:
+- apiGroups:
+  - ""  # indicates the core API group
+  resources:
+  - "pods"
+  verbs:
+  - "get"
+  - "list"
+  - "watch"
+  - "create"
+  - "delete"
+- apiGroups:
+  - ""  # indicates the core API group
+  resources:
+  - "pods/log"
+  verbs:
+  - "get"
+  - "list"
+- apiGroups:
+  - "" # indicates the core API group
+  resources:
+  - "services"
+  verbs:
+  - "get"
+  - "list"
+  - "watch"
+  - "create"
+  - "delete"
+- apiGroups:
+  - "policy"  # indicates the policy API group
+  resources:
+  - "poddisruptionbudgets"
+  verbs:
+  - "get"
+  - "list"
+  - "watch"
+  - "create"
+  - "delete"
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: data-worker
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: data-worker-binding
+subjects:
+- kind: ServiceAccount
+  name: data-worker
+roleRef:
+  kind: Role
+  name: {{ $serviceName }}
+  apiGroup: rbac.authorization.k8s.io
