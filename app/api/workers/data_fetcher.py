@@ -259,11 +259,6 @@ def fetch(
     max_data_size = np.sum([v['total_size'] for v in ds_list.values()])
     max_mem_size = max_data_size / 1024 ** 3
 
-    status_dict.update(
-        {"msg": f"Max data size available {memory_repr(max_data_size)}."}
-    )
-    self.update_state(state="PROGRESS", meta=status_dict)
-
     dask_spec = {'min_workers': 1, 'max_workers': 2}
     data_threshold = os.environ.get('DATA_THRESHOLD', 50)
 
@@ -287,14 +282,21 @@ def fetch(
         )
 
         status_dict.update(
-            {"msg": "Setting up distributed computing cluster..."}
+            {
+                "msg": f"Setting up distributed computing cluster. Max data size: {memory_repr(max_data_size)}"
+            }
         )
         self.update_state(state="PROGRESS", meta=status_dict)
         cluster = KubeCluster(
-            dask_spec['pod_spec'], n_workers=dask_spec['min_workers']
+            dask_spec['pod_spec'],
+            n_workers=dask_spec['min_workers'],
         )
     else:
-        status_dict.update({"msg": "Setting up local computing cluster..."})
+        status_dict.update(
+            {
+                "msg": f"Setting up local computing cluster. Max data size: {memory_repr(max_data_size)}"
+            }
+        )
         self.update_state(state="PROGRESS", meta=status_dict)
         cluster = LocalCluster(n_workers=dask_spec['min_workers'])
 
@@ -374,4 +376,8 @@ def fetch(
             )
         logger.info("Result done.")
     # ================ End Compute results ========================
+
+    # Cleans up dask
+    client.close()
+    cluster.close()
     return result
