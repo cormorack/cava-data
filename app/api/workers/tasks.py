@@ -23,7 +23,7 @@ def perform_fetch_task(self, data_request):
     }
     start_dt = data_request['start_dt']
     end_dt = data_request['end_dt']
-    attrs_check = data_request['attrs_check']
+    attrs_check = data_request.get('attrs_check', False)
     result = fetch(
         self,
         request_params,
