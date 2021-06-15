@@ -38,7 +38,7 @@ def _merge_datasets(data_list: dict, start_dt: str, end_dt: str) -> xr.Dataset:
     # --- This way of merging is for simple data only! ---
     # Align time based on request start and end datetime string
     new_time = pd.date_range(start_dt, end_dt, freq="1s")
-    dslist = [_interp_ds(ds, new_time) for k, ds in data_list.items()]
+    dslist = [_interp_ds(ds, new_time) for _, ds in data_list.items()]
     # --- Done one way of merging ---
 
     merged = xr.merge(dslist, combine_attrs="no_conflicts").unify_chunks()
@@ -338,7 +338,7 @@ def fetch(
                     {"msg": "Interpolating and merging datasets..."}
                 )
                 self.update_state(state="PROGRESS", meta=status_dict)
-                merged = _merge_datasets(data_list, axis_params, start_dt, end_dt)
+                merged = _merge_datasets(data_list, start_dt, end_dt)
             else:
                 merged = next(ds for _, ds in data_list.items())
 
