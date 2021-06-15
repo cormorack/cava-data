@@ -158,7 +158,7 @@ def determine_workers(
     memory_limit: int = 16,
     cpu_limit: int = 2,
     image_repo: str = 'cormorack',
-    image_name: str = 'cava-data',
+    image_name: str = 'cava-dask',
     image_tag: str = '20210610',
 ) -> dict:
     """
