@@ -311,71 +311,77 @@ def fetch(
 
     # for spikr
     # parameters.append("spectra")
-
-    status_dict.update({"msg": "Retrieving data from zarr store ..."})
-    self.update_state(state="PROGRESS", meta=status_dict)
-    data_list = {
-        k: v['dataset']
-        .sel(time=(start_dt, end_dt), use_attrs=attrs_check)
-        .dataset
-        for k, v in ds_list.items()
-    }
-
-    status_dict.update({"msg": "Validating datasets..."})
-    self.update_state(state="PROGRESS", meta=status_dict)
-    if any(True for _, v in data_list.items() if v is None):
-        # Checks if data_list is None
-        status_dict.update(
-            {"msg": "One of the dataset does not contain data."}
-        )
+    try:
+        status_dict.update({"msg": "Retrieving data from zarr store ..."})
         self.update_state(state="PROGRESS", meta=status_dict)
-        result = None
-    else:
-        status_dict.update({"msg": "All datasets contain data..."})
+        data_list = {
+            k: v['dataset']
+            .sel(time=(start_dt, end_dt), use_attrs=attrs_check)
+            .dataset
+            for k, v in ds_list.items()
+        }
+
+        status_dict.update({"msg": "Validating datasets..."})
         self.update_state(state="PROGRESS", meta=status_dict)
-        if len(data_list.keys()) > 1:
+        if any(True for _, v in data_list.items() if v is None):
+            # Checks if data_list is None
             status_dict.update(
-                {"msg": "Interpolating and merging datasets..."}
-            )
-            self.update_state(state="PROGRESS", meta=status_dict)
-            merged = _merge_datasets(data_list, axis_params, start_dt, end_dt)
-        else:
-            merged = next(ds for _, ds in data_list.items())
-
-        data_count = len(merged.time)
-
-        if data_count == 0:
-            status_dict.update(
-                {"msg": "Merged dataset does not contain data."}
+                {"msg": "One of the dataset does not contain data."}
             )
             self.update_state(state="PROGRESS", meta=status_dict)
             result = None
         else:
-            status_dict.update({"msg": "Plotting merged datasets..."})
+            status_dict.update({"msg": "All datasets contain data..."})
             self.update_state(state="PROGRESS", meta=status_dict)
-            # Shading process
-            final_dct, shaded, color_column = _plot_merged_dataset(
-                merged, axis_params
-            )
-            x = final_dct.get(axis_params['x'], [])
-            y = final_dct.get(axis_params['y'], [])
-            z = []
-            if axis_params['z']:
-                z = final_dct.get(axis_params['z'], np.array([]))
-            elif shaded:
-                z = final_dct.get(color_column, np.array([]))
+            if len(data_list.keys()) > 1:
+                status_dict.update(
+                    {"msg": "Interpolating and merging datasets..."}
+                )
+                self.update_state(state="PROGRESS", meta=status_dict)
+                merged = _merge_datasets(data_list, axis_params, start_dt, end_dt)
+            else:
+                merged = next(ds for _, ds in data_list.items())
 
-            result = (
-                {
-                    "x": x,
-                    "y": y,
-                    "z": z,
-                    "count": data_count,
-                    "shaded": shaded,
-                },
-            )
-        logger.info("Result done.")
-    # ================ End Compute results ========================
+            data_count = len(merged.time)
+
+            if data_count == 0:
+                status_dict.update(
+                    {"msg": "Merged dataset does not contain data."}
+                )
+                self.update_state(state="PROGRESS", meta=status_dict)
+                result = None
+            else:
+                status_dict.update({"msg": "Plotting merged datasets..."})
+                self.update_state(state="PROGRESS", meta=status_dict)
+                # Shading process
+                final_dct, shaded, color_column = _plot_merged_dataset(
+                    merged, axis_params
+                )
+                x = final_dct.get(axis_params['x'], [])
+                y = final_dct.get(axis_params['y'], [])
+                z = []
+                if axis_params['z']:
+                    z = final_dct.get(axis_params['z'], np.array([]))
+                elif shaded:
+                    z = final_dct.get(color_column, np.array([]))
+
+                result = (
+                    {
+                        "x": x,
+                        "y": y,
+                        "z": z,
+                        "count": data_count,
+                        "shaded": shaded,
+                    },
+                )
+            logger.info("Result done.")
+        # ================ End Compute results ========================
+    except Exception as e:
+        status_dict.update(
+            {"msg": f"Exception found during computation: {e}"}
+        )
+        self.update_state(state="PROGRESS", meta=status_dict)
+        result = None
 
     # Cleans up dask
     client.close()
