@@ -1,4 +1,3 @@
-from dateutil import parser
 from app.core.celery_app import celery_app
 from .data_fetcher import fetch
 
@@ -24,6 +23,7 @@ def perform_fetch_task(self, data_request):
     }
     start_dt = data_request['start_dt']
     end_dt = data_request['end_dt']
+    attrs_check = data_request['attrs_check']
     result = fetch(
         self,
         request_params,
@@ -33,6 +33,7 @@ def perform_fetch_task(self, data_request):
         download,
         download_format,
         status_dict,
+        attrs_check,
     )
     if result is not None:
         return {
