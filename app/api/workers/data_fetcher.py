@@ -1,4 +1,7 @@
 import logging
+import os
+import re
+from dask.utils import memory_repr
 import numpy as np
 import xarray as xr
 import zarr
@@ -7,7 +10,7 @@ import datashader
 import hvplot.xarray  # noqa
 import pandas as pd
 from dask_kubernetes import KubeCluster, make_pod_spec
-from dask.distributed import Client
+from dask.distributed import Client, LocalCluster
 from .models import OOIDataset
 
 logger = logging.getLogger(__name__)
@@ -243,9 +246,9 @@ def fetch(
     if "time" not in parameters:
         parameters.append("time")
 
-    # Set up dask computation cluster
-    status_dict.update({"msg": "Setting up computation cluster..."})
+    status_dict.update({"msg": f"{len(request_params)} datasets requested."})
     self.update_state(state="PROGRESS", meta=status_dict)
+
     ds_list = {}
     for dataset_id in request_params:
         ooids = OOIDataset(dataset_id)[parameters]
@@ -253,19 +256,53 @@ def fetch(
             'dataset': ooids,
             'total_size': ooids._total_size,
         }
-    max_mem_size = (
-        np.sum([v['total_size'] for v in ds_list.values()]) / 1024 ** 3
-    )
-    dask_spec = determine_workers(max_mem_size)
+    max_data_size = np.sum([v['total_size'] for v in ds_list.values()])
+    max_mem_size = max_data_size / 1024 ** 3
 
-    cluster = KubeCluster(
-        dask_spec['pod_spec'], n_workers=dask_spec['min_workers']
+    status_dict.update(
+        {"msg": f"Max data size available {memory_repr(max_data_size)}."}
     )
+    self.update_state(state="PROGRESS", meta=status_dict)
+
+    dask_spec = {'min_workers': 1, 'max_workers': 2}
+    data_threshold = os.environ.get('DATA_THRESHOLD', 50)
+
+    if max_mem_size > data_threshold:
+        image_repo, image_name, image_tag = (
+            'cormorack',
+            'cava-dask',
+            '20210610',
+        )
+        desired_image = os.environ.get(
+            "DASK_DOCKER_IMAGE", f"{image_repo}/{image_name}:{image_tag}"
+        )
+        match = re.match(r"(.+)/(.+):(.+)", desired_image)
+        if match is not None:
+            image_repo, image_name, image_tag = match.groups()
+        dask_spec = determine_workers(
+            max_mem_size,
+            image_repo=image_repo,
+            image_name=image_name,
+            image_tag=image_tag,
+        )
+
+        status_dict.update(
+            {"msg": "Setting up distributed computing cluster..."}
+        )
+        self.update_state(state="PROGRESS", meta=status_dict)
+        cluster = KubeCluster(
+            dask_spec['pod_spec'], n_workers=dask_spec['min_workers']
+        )
+    else:
+        status_dict.update({"msg": "Setting up local computing cluster..."})
+        self.update_state(state="PROGRESS", meta=status_dict)
+        cluster = LocalCluster(n_workers=dask_spec['min_workers'])
+
     cluster.adapt(
         minimum=dask_spec['min_workers'], maximum=dask_spec['max_workers']
     )
-    client = Client(cluster)  # noqa
 
+    client = Client(cluster)  # noqa
     # TODO: Need to add other parameters for multidimensional
     # need a check for nutnr,pco2,ph,optaa add int_ctd_pressure
     # parameters.append("int_ctd_pressure")
