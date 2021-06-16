@@ -302,20 +302,10 @@ def fetch(
             dask_spec['pod_spec'],
             n_workers=dask_spec['min_workers'],
         )
-    else:
-        status_dict.update(
-            {
-                "msg": f"Setting up local computing cluster. Max data size: {memory_repr(max_data_size)}"
-            }
+        cluster.adapt(
+            minimum=dask_spec['min_workers'], maximum=dask_spec['max_workers']
         )
-        self.update_state(state="PROGRESS", meta=status_dict)
-        cluster = LocalCluster(n_workers=dask_spec['min_workers'])
-
-    cluster.adapt(
-        minimum=dask_spec['min_workers'], maximum=dask_spec['max_workers']
-    )
-
-    client = Client(cluster)  # noqa
+        client = Client(cluster)
     # TODO: Need to add other parameters for multidimensional
     # need a check for nutnr,pco2,ph,optaa add int_ctd_pressure
     # parameters.append("int_ctd_pressure")
