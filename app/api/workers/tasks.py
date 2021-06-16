@@ -45,5 +45,5 @@ def perform_fetch_task(self, data_request):
         return {
             "status": "completed",
             "result": None,
-            "msg": f"No data found for {start_dt.isoformat()} to {end_dt.isoformat()}",  # noqa
+            "msg": f"No data found for {start_dt} to {end_dt}",  # noqa
         }

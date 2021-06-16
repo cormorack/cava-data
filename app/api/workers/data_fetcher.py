@@ -380,7 +380,7 @@ def fetch(
         status_dict.update(
             {"msg": f"Exception found during computation: {e}"}
         )
-        self.update_state(state="PROGRESS", meta=status_dict)
+        self.update_state(state="FAILURE", meta=status_dict)
         result = None
 
     # Cleans up dask
