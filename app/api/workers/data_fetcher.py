@@ -342,13 +342,16 @@ def fetch(
             self.update_state(state="PROGRESS", meta=status_dict)
             result = None
         else:
-            status_dict.update({"msg": "All datasets contain data..."})
+            total_requested_size = np.sum(
+                np.fromiter((v.nbytes for v in data_list.values()), dtype=int)
+            )
+            status_dict.update(
+                {
+                    "msg": f"There are {memory_repr(total_requested_size)} of data to be processed."
+                }
+            )
             self.update_state(state="PROGRESS", meta=status_dict)
             if len(data_list.keys()) > 1:
-                status_dict.update(
-                    {"msg": "Interpolating and merging datasets..."}
-                )
-                self.update_state(state="PROGRESS", meta=status_dict)
                 merged = _merge_datasets(data_list, start_dt, end_dt)
             else:
                 merged = next(ds for _, ds in data_list.items())

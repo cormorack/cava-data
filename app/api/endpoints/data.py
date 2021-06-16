@@ -8,6 +8,8 @@ from starlette.routing import NoMatchFound
 import yaml
 
 import xarray as xr
+from dask.utils import memory_repr
+import numpy as np
 
 from ...store import JOB_RESULTS, CENTRAL_STORE
 from ..utils import get_ds
@@ -134,13 +136,10 @@ def get_job(uid: str):
     return response
 
 
-@router.post("/", status_code=202)
-def request_data(request: Request, data_request: DataRequest):
+@router.post("/check", status_code=202)
+def data_request_check(request: Request, data_request: DataRequest):
     try:
         req = data_request.dict()
-        task = perform_fetch_task.apply_async(args=(req,))
-        request_uuid = task.id
-
         # Figure out the maximum data size request possible
         # Some functionality same as perform_fetch_task in tasks.py
         request_params = req["ref"].split(",")
@@ -153,11 +152,32 @@ def request_data(request: Request, data_request: DataRequest):
         ds_list = get_delayed_ds(
             request_params, axis_params, include_dataset=False
         )
+        max_data_size = np.sum([v['total_size'] for v in ds_list.values()])
+        return {
+            "status": "success",
+            "data_sizes": ds_list,
+            "msg": f"Max data request: {memory_repr(max_data_size)}",
+        }
+    except Exception as e:
+        return JSONResponse(
+            content={
+                "status": "failed",
+                "data_sizes": None,
+                "msg": f"Error occured: {e}",
+            },
+            status_code=500,
+        )
+
+
+@router.post("/", status_code=202)
+def request_data(request: Request, data_request: DataRequest):
+    try:
+        task = perform_fetch_task.apply_async(args=(data_request.dict(),))
+        request_uuid = task.id
         return {
             "status": "success",
             "job_uuid": str(request_uuid),
             "result_url": f"/data/job/{str(request_uuid)}",
-            "max_data_size": ds_list,
             "msg": f"Job {str(request_uuid)} created.",
         }
     except Exception as e:
@@ -166,7 +186,6 @@ def request_data(request: Request, data_request: DataRequest):
                 "status": "failed",
                 "job_uuid": None,
                 "result_url": None,
-                "max_data_size": None,
                 "msg": f"Error occured: {e}",
             },
             status_code=500,
