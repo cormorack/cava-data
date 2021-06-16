@@ -227,6 +227,26 @@ def determine_workers(
     }
 
 
+def get_delayed_ds(
+    request_params: list, axis_params: dict, include_dataset: bool = True
+) -> dict:
+    """Fetches the OOIDataset Delayed Object"""
+    parameters = setup_params(axis_params)
+    if "time" not in parameters:
+        parameters.append("time")
+
+    ds_list = {}
+    for dataset_id in request_params:
+        ooids = OOIDataset(dataset_id)[parameters]
+        total_size = np.sum([v.nbytes for v in ooids.variables.values()])
+        ds_list[dataset_id] = {
+            'total_size': total_size,
+        }
+        if include_dataset:
+            ds_list[dataset_id].update({'dataset': ooids})
+    return ds_list
+
+
 def fetch(
     self,
     request_params,
@@ -242,20 +262,11 @@ def fetch(
         state="PROGRESS",
         meta=status_dict,
     )
-    parameters = setup_params(axis_params)
-    if "time" not in parameters:
-        parameters.append("time")
+    ds_list = get_delayed_ds(request_params, axis_params)
 
     status_dict.update({"msg": f"{len(request_params)} datasets requested."})
     self.update_state(state="PROGRESS", meta=status_dict)
 
-    ds_list = {}
-    for dataset_id in request_params:
-        ooids = OOIDataset(dataset_id)[parameters]
-        ds_list[dataset_id] = {
-            'dataset': ooids,
-            'total_size': ooids._total_size,
-        }
     max_data_size = np.sum([v['total_size'] for v in ds_list.values()])
     max_mem_size = max_data_size / 1024 ** 3
 
@@ -377,9 +388,7 @@ def fetch(
             logger.info("Result done.")
         # ================ End Compute results ========================
     except Exception as e:
-        status_dict.update(
-            {"msg": f"Exception found during computation: {e}"}
-        )
+        status_dict.update({"msg": f"Exception found during computation: {e}"})
         self.update_state(state="FAILURE", meta=status_dict)
         result = None
 

@@ -15,6 +15,7 @@ from ...models import DataRequest
 from .download import router as download_router
 from .ship_data import router as ship_data_router
 from ..workers.tasks import perform_fetch_task
+from ..workers.data_fetcher import get_delayed_ds
 
 logger = logging.getLogger(__name__)
 logging.root.setLevel(level=logging.INFO)
@@ -28,6 +29,7 @@ router.include_router(ship_data_router, prefix="/ship")
 @router.get("/")
 def list_datasets():
     return get_ds()
+
 
 # ------------ CATALOG ENDPOINTS ------------------------
 @router.get("/catalog")
@@ -96,6 +98,8 @@ async def view_data_stream_dataset(data_stream: str) -> Any:
         return JSONResponse(
             status_code=400, content={"message": f"{e}", "type": f"{type(e)}"}
         )
+
+
 # ------------ END CATALOG ENDPOINTS ------------------------
 
 
@@ -133,12 +137,27 @@ def get_job(uid: str):
 @router.post("/", status_code=202)
 def request_data(request: Request, data_request: DataRequest):
     try:
-        task = perform_fetch_task.apply_async(args=(data_request.dict(),))
+        req = data_request.dict()
+        task = perform_fetch_task.apply_async(args=(req,))
         request_uuid = task.id
+
+        # Figure out the maximum data size request possible
+        # Some functionality same as perform_fetch_task in tasks.py
+        request_params = req["ref"].split(",")
+        # TODO: For now use z as color, need to change in future, esp for 3D
+        axis_params = {
+            "x": req['x'],
+            "y": req['y'],
+            "z": req['color'],
+        }
+        ds_list = get_delayed_ds(
+            request_params, axis_params, include_dataset=False
+        )
         return {
             "status": "success",
             "job_uuid": str(request_uuid),
             "result_url": f"/data/job/{str(request_uuid)}",
+            "max_data_size": ds_list,
             "msg": f"Job {str(request_uuid)} created.",
         }
     except Exception as e:
@@ -147,6 +166,7 @@ def request_data(request: Request, data_request: DataRequest):
                 "status": "failed",
                 "job_uuid": None,
                 "result_url": None,
+                "max_data_size": None,
                 "msg": f"Error occured: {e}",
             },
             status_code=500,
