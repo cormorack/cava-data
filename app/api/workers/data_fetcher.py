@@ -1,3 +1,4 @@
+import time
 import logging
 import os
 import re
@@ -10,7 +11,7 @@ import datashader
 import hvplot.xarray  # noqa
 import pandas as pd
 from dask_kubernetes import KubeCluster, make_pod_spec
-from dask.distributed import Client, LocalCluster
+from dask.distributed import Client
 from .models import OOIDataset
 
 logger = logging.getLogger(__name__)
@@ -326,12 +327,34 @@ def fetch(
 
     status_dict.update({"msg": "Validating datasets..."})
     self.update_state(state="PROGRESS", meta=status_dict)
-    if any(True for _, v in data_list.items() if v is None):
+    if any(True for v in data_list.values() if v is None):
         # Checks if data_list is None
         status_dict.update(
             {"msg": "One of the dataset does not contain data."}
         )
         self.update_state(state="PROGRESS", meta=status_dict)
+        time.sleep(2)
+        result = None
+    elif any(True for v in data_list.values() if len(v.time) == 0):
+        empty_streams = []
+        for k, v in data_list.items():
+            if len(v.time) == 0:
+                empty_streams.append(k)
+        # Checks if data_list is None
+        status_dict.update(
+            {
+                "msg": f"Empty data stream(s) found: {','.join(empty_streams)}."
+            }
+        )
+        self.update_state(state="PROGRESS", meta=status_dict)
+        time.sleep(2)
+        status_dict.update(
+            {
+                "msg": "Plot creation is not possible with specified parameters. Please try again."
+            }
+        )
+        self.update_state(state="PROGRESS", meta=status_dict)
+        time.sleep(2)
         result = None
     else:
         total_requested_size = np.sum(
