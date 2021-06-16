@@ -273,6 +273,9 @@ def fetch(
     dask_spec = {'min_workers': 1, 'max_workers': 2}
     data_threshold = os.environ.get('DATA_THRESHOLD', 50)
 
+    client = None
+    cluster = None
+
     if max_mem_size > data_threshold:
         image_repo, image_name, image_tag = (
             'cormorack',
@@ -385,7 +388,10 @@ def fetch(
         self.update_state(state="FAILURE", meta=status_dict)
         result = None
 
-    # Cleans up dask
-    client.close()
-    cluster.close()
+    if client is not None:
+        # Cleans up dask
+        client.close()
+
+    if cluster is not None:
+        cluster.close()
     return result
