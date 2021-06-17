@@ -342,9 +342,7 @@ def fetch(
                 empty_streams.append(k)
         # Checks if data_list is None
         status_dict.update(
-            {
-                "msg": f"Empty data stream(s) found: {','.join(empty_streams)}."
-            }
+            {"msg": f"Empty data stream(s) found: {','.join(empty_streams)}."}
         )
         self.update_state(state="PROGRESS", meta=status_dict)
         time.sleep(2)
@@ -382,6 +380,10 @@ def fetch(
         else:
             status_dict.update({"msg": "Plotting merged datasets..."})
             self.update_state(state="PROGRESS", meta=status_dict)
+            # Swapping dimensions for plotting to work if time is not
+            # an axis selection
+            if axis_params["x"] != "time":
+                merged = merged.swap_dims({"time": axis_params['x']})
             # Shading process
             final_dct, shaded, color_column = _plot_merged_dataset(
                 merged, axis_params
