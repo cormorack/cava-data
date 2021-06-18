@@ -152,10 +152,14 @@ def data_request_check(request: Request, data_request: DataRequest):
         ds_list = get_delayed_ds(
             request_params, axis_params, include_dataset=False
         )
+        cleaned_list = {
+            k: {i: int(j) for i, j in v.items() if i == 'total_size'}
+            for k, v in ds_list.items()
+        }
         max_data_size = np.sum([v['total_size'] for v in ds_list.values()])
         return {
             "status": "success",
-            "data_sizes": ds_list,
+            "data_sizes": cleaned_list,
             "msg": f"Max data request: {memory_repr(max_data_size)}",
         }
     except Exception as e:
