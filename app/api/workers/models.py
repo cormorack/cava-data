@@ -1,5 +1,6 @@
 import bisect
 import copy
+from datetime import datetime
 import itertools as it
 from dateutil import parser
 from typing import Union
@@ -12,6 +13,11 @@ import dask.array as da
 
 import xarray as xr
 from xarray.core.utils import either_dict_or_kwargs
+
+TIME_DEFAULTS = {
+    'units': 'seconds since 1900-01-01 00:00:00',
+    'calendar': 'gregorian',
+}
 
 
 class OOIDataset:
@@ -166,9 +172,24 @@ class OOIDataset:
         self._set_variables()
         return self
 
-    def sel(
-        self, indexers: dict = None, use_attrs: bool = False, **indexers_kwargs
-    ):
+    def _time_range_check(
+        self, arr: zarr.Array, start_dt: datetime, end_dt: datetime
+    ) -> bool:
+        """Performs an initial time range check for data"""
+        calendar = arr.attrs.get('calendar', TIME_DEFAULTS['calendar'])
+        units = arr.attrs.get('units', TIME_DEFAULTS['units'])
+        time_range = xr.coding.times.decode_cf_datetime(
+            [arr[0], arr[-1]], units, calendar
+        )
+        time_filter = np.array(
+            [start_dt, end_dt],
+            dtype='datetime64[ns]',
+        )
+        return self._in_time_range(
+            time_filter=time_filter, time_range=time_range
+        )
+
+    def sel(self, indexers: dict = None, **indexers_kwargs):
         # TODO: Figure out how to handle one indexer instead of start, end
         indexers = either_dict_or_kwargs(indexers, indexers_kwargs, "sel")
 
@@ -197,29 +218,10 @@ class OOIDataset:
                     [start_dt, end_dt], time_units, calendar
                 )
 
-                if use_attrs:
-                    # Time range checking, doesn't create xr.Dataset
-                    # when it's empty
-                    # TODO: Update all zarr data streams with the correct
-                    #       time coverage attributes based on time values!
-                    #       Optional for now until the attributes are updated.
-                    time_range, _, _ = xr.coding.times.encode_cf_datetime(
-                        [
-                            parser.parse(
-                                self.global_attributes['time_coverage_start']
-                            ),
-                            parser.parse(
-                                self.global_attributes['time_coverage_end']
-                            ),
-                        ],
-                        time_units,
-                        calendar,
-                    )
-                    in_time_range = self._in_time_range(
-                        time_filter=self.__time_filter, time_range=time_range
-                    )
-                    if not in_time_range:
-                        return self
+                # Peforms initial time range check from time array of data
+                in_time_range = self._time_range_check(arr, start_dt, end_dt)
+                if not in_time_range:
+                    return self
 
                 indexers[k] = self.__time_filter
 

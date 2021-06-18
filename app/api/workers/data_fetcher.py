@@ -257,7 +257,6 @@ def fetch(
     download,
     download_format,
     status_dict,
-    attrs_check: bool = False,
 ):
     self.update_state(
         state="PROGRESS",
@@ -319,9 +318,7 @@ def fetch(
     status_dict.update({"msg": "Retrieving data from zarr store ..."})
     self.update_state(state="PROGRESS", meta=status_dict)
     data_list = {
-        k: v['dataset']
-        .sel(time=(start_dt, end_dt), use_attrs=attrs_check)
-        .dataset
+        k: v['dataset'].sel(time=(start_dt, end_dt)).dataset
         for k, v in ds_list.items()
     }
 
