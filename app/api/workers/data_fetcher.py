@@ -3,6 +3,7 @@ import logging
 import os
 import re
 from dask.utils import memory_repr
+import dask.array as da
 import numpy as np
 import xarray as xr
 import zarr
@@ -38,7 +39,16 @@ def _merge_datasets(data_list: dict, start_dt: str, end_dt: str) -> xr.Dataset:
     # Merge data_list
     # --- This way of merging is for simple data only! ---
     # Align time based on request start and end datetime string
-    new_time = pd.date_range(start_dt, end_dt, freq="1s")
+    time_defaults = {
+        'units': 'seconds since 1900-01-01 00:00:00',
+        'calendar': 'gregorian',
+    }
+    t_range, _, _ = xr.coding.times.encode_cf_datetime(
+        [pd.to_datetime(start_dt), pd.to_datetime(end_dt)], **time_defaults
+    )
+    new_time = da.arange(*t_range).map_blocks(
+        xr.coding.times.decode_cf_datetime, **time_defaults
+    )
     dslist = [_interp_ds(ds, new_time) for _, ds in data_list.items()]
     # --- Done one way of merging ---
 
