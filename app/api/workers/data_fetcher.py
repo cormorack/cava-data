@@ -2,6 +2,7 @@ import time
 import logging
 import os
 import re
+import dask
 from dask.utils import memory_repr
 import dask.array as da
 import numpy as np
@@ -146,9 +147,11 @@ def fetch_zarr(zarr_url, storage_options={'anon': True}):
 def _interp_ds(
     ds: xr.Dataset, new_time: pd.DatetimeIndex, method: str = 'nearest'
 ) -> xr.Dataset:
-    return ds.interp(time=new_time).interpolate_na(
-        dim='time', method=method, fill_value="extrapolate"
-    )
+    with dask.config.set(**{'array.slicing.split_large_chunks': True}):
+        new_ds = ds.interp(time=new_time).interpolate_na(
+            dim='time', method=method, fill_value="extrapolate"
+        )
+    return new_ds
 
 
 def _clean_pod_spec(pod_spec):

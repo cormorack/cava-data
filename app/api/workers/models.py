@@ -1,6 +1,7 @@
 import bisect
 import copy
 from datetime import datetime
+import dask
 import itertools as it
 from dateutil import parser
 from typing import Union
@@ -120,7 +121,8 @@ class OOIDataset:
                 dim: pos_indexes[dim] if dim in pos_indexes else slice(None)
                 for dim in v.dims
             }
-            data_vars[k] = v.isel(**key)
+            with dask.config.set(**{'array.slicing.split_large_chunks': True}):
+                data_vars[k] = v.isel(**key)
         return data_vars
 
     def _in_time_range(
