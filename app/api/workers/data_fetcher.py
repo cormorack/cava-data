@@ -14,6 +14,7 @@ import hvplot.xarray  # noqa
 import pandas as pd
 from dask_kubernetes import KubeCluster, make_pod_spec
 from dask.distributed import Client
+from typing import Union
 from .models import OOIDataset
 
 logger = logging.getLogger(__name__)
@@ -145,7 +146,9 @@ def fetch_zarr(zarr_url, storage_options={'anon': True}):
 
 
 def _interp_ds(
-    ds: xr.Dataset, new_time: pd.DatetimeIndex, method: str = 'nearest'
+    ds: xr.Dataset,
+    new_time: Union[pd.DatetimeIndex, da.Array],
+    method: str = 'nearest',
 ) -> xr.Dataset:
     with dask.config.set(**{'array.slicing.split_large_chunks': True}):
         new_ds = ds.interp(time=new_time).interpolate_na(
