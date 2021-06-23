@@ -21,7 +21,7 @@ class DataRequest(BaseModel):
 
 
 class CancelConfig(BaseModel):
-    signal: Optional[str] = 'SIGTERM'
+    signal: Optional[str] = 'SIGUSR1'
 
 
 class XRDataset:

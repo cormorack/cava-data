@@ -139,7 +139,7 @@ def get_job(uid: str):
 def cancel_job(uid: str, cancel_config: CancelConfig):
     signal = cancel_config.signal
     try:
-        if signal not in ['SIGTERM', 'SIGKILL']:
+        if signal not in ['SIGTERM', 'SIGKILL', 'SIGUSR1']:
             raise ValueError(f"{signal} is not a valid value.")
         celery_app.control.revoke(uid, terminate=True, signal=signal)
         return {
