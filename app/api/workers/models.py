@@ -107,10 +107,14 @@ class OOIDataset:
         pos_indexes = {}
         for dim in self._dataset_dict['dims']:
             dim_arr = self._dataset_dict['variables'][dim].data
-            start, end = indexers[dim]
-            pos_indexes[dim] = da.where((dim_arr >= start) & (dim_arr <= end))[
-                0
-            ].compute()
+            if dim in indexers:
+                if indexers[dim] is not None:
+                    start, end = indexers[dim]
+                    pos_indexes[dim] = da.where(
+                        (dim_arr >= start) & (dim_arr <= end)
+                    )[0].compute()
+                else:
+                    pos_indexes[dim] = None
         return pos_indexes
 
     def _create_dataset_dict(self, pos_indexes) -> dict:
@@ -145,8 +149,10 @@ class OOIDataset:
                     keep_attrs=True,
                     dask="parallelized",
                     kwargs={
-                        'units': v.attrs['units'],
-                        'calendar': v.attrs['calendar'],
+                        'units': v.attrs.get('units', TIME_DEFAULTS['units']),
+                        'calendar': v.attrs.get(
+                            'calendar', TIME_DEFAULTS['calendar']
+                        ),
                     },
                 )
             )
