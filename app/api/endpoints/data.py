@@ -1,17 +1,16 @@
 import logging
-import uuid
 from typing import Any
 from fastapi import APIRouter
 from fastapi.responses import JSONResponse, HTMLResponse
 from starlette.requests import Request
-from starlette.routing import NoMatchFound
 import yaml
 
 import xarray as xr
 from dask.utils import memory_repr
 import numpy as np
 
-from ...store import JOB_RESULTS, CENTRAL_STORE
+from app.core.celery_app import celery_app
+from ...store import CENTRAL_STORE
 from ..utils import get_ds
 from ...models import DataRequest
 from .download import router as download_router
@@ -51,7 +50,7 @@ async def get_catalog(streams_only: bool = False) -> JSONResponse:
             return JSONResponse(
                 status_code=200,
                 content={
-                    "message": "Catalog not available. Please try again in a few minutes."
+                    "message": "Catalog not available. Please try again in a few minutes."  # noqa
                 },
             )
     except Exception as e:
@@ -71,7 +70,7 @@ async def view_data_stream_catalog(data_stream: str) -> Any:
             return JSONResponse(
                 status_code=200,
                 content={
-                    "message": "Catalog not available. Please try again in a few minutes."
+                    "message": "Catalog not available. Please try again in a few minutes."  # noqa
                 },
             )
     except Exception as e:
@@ -93,7 +92,7 @@ async def view_data_stream_dataset(data_stream: str) -> Any:
             return JSONResponse(
                 status_code=200,
                 content={
-                    "message": "Catalog not available. Please try again in a few minutes."
+                    "message": "Catalog not available. Please try again in a few minutes."  # noqa
                 },
             )
     except Exception as e:
@@ -134,6 +133,24 @@ def get_job(uid: str):
             }
         )
     return response
+
+
+@router.post("/job/{uid}/cancel", status_code=202)
+def cancel_job(uid: str):
+    try:
+        celery_app.control.revoke(uid, terminate=True, signal='SIGKILL')
+        return {
+            "status": "success",
+            "msg": f"Job {uid} successfully cancelled.",
+        }
+    except Exception as e:
+        return JSONResponse(
+            content={
+                "status": "failed",
+                "msg": f"Error occured: {e}",
+            },
+            status_code=500,
+        )
 
 
 @router.post("/check", status_code=202)
