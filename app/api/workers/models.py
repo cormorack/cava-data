@@ -87,7 +87,10 @@ class OOIDataset:
             attrs = arr.attrs.asdict()
             attrs.pop('_ARRAY_DIMENSIONS')
             self._dataset_dict['variables'][k] = xr.DataArray(
-                data=da.from_zarr(arr), dims=dims, name=k, attrs=attrs
+                data=da.from_zarr(arr).rechunk(),
+                dims=dims,
+                name=k,
+                attrs=attrs,
             )
             all_dims.append(dims)
         self._dataset_dict['dims'] = list(
