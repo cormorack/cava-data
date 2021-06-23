@@ -20,6 +20,10 @@ class DataRequest(BaseModel):
     download: bool = False
 
 
+class CancelConfig(BaseModel):
+    signal: Optional[str] = 'SIGTERM'
+
+
 class XRDataset:
     def __init__(self, zarr_url, mounted=False):
         self._zarr_url = zarr_url

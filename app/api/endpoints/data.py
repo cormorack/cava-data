@@ -12,7 +12,7 @@ import numpy as np
 from app.core.celery_app import celery_app
 from ...store import CENTRAL_STORE
 from ..utils import get_ds
-from ...models import DataRequest
+from ...models import DataRequest, CancelConfig
 from .download import router as download_router
 from .ship_data import router as ship_data_router
 from ..workers.tasks import perform_fetch_task
@@ -136,17 +136,22 @@ def get_job(uid: str):
 
 
 @router.post("/job/{uid}/cancel", status_code=202)
-def cancel_job(uid: str):
+def cancel_job(uid: str, cancel_config: CancelConfig):
+    signal = cancel_config.signal
     try:
-        celery_app.control.revoke(uid, terminate=True, signal='SIGKILL')
+        if signal not in ['SIGTERM', 'SIGKILL']:
+            raise ValueError(f"{signal} is not a valid value.")
+        celery_app.control.revoke(uid, terminate=True, signal=signal)
         return {
             "status": "success",
+            "signal": signal,
             "msg": f"Job {uid} successfully cancelled.",
         }
     except Exception as e:
         return JSONResponse(
             content={
                 "status": "failed",
+                "signal": signal,
                 "msg": f"Error occured: {e}",
             },
             status_code=500,
