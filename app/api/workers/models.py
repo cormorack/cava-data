@@ -224,7 +224,10 @@ class OOIDataset:
 
                 if 'units' in arr.attrs:
                     time_units = arr.attrs['units']
+                
+                if 'calendar' in arr.attrs:
                     calendar = arr.attrs['calendar']
+ 
                 self.__time_filter, _, _ = xr.coding.times.encode_cf_datetime(
                     [start_dt, end_dt], time_units, calendar
                 )
