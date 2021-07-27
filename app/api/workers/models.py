@@ -173,8 +173,10 @@ class OOIDataset:
     @staticmethod
     def _set_time_attrs(da):
         new_attrs = da.attrs.copy()
-        new_attrs.pop('units')
-        new_attrs.pop('calendar')
+        if 'units' in new_attrs:
+            new_attrs.pop('units')
+        if 'calendar' in new_attrs:
+            new_attrs.pop('calendar')
         da.attrs = new_attrs
         return da
 
