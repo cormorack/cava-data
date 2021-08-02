@@ -149,10 +149,13 @@ def _interp_ds(
     ds: xr.Dataset,
     new_time: Union[pd.DatetimeIndex, da.Array],
     method: str = 'nearest',
+    max_gap: pd.Timedelta = pd.Timedelta(1, unit='D')
 ) -> xr.Dataset:
     with dask.config.set(**{'array.slicing.split_large_chunks': True}):
         new_ds = ds.interp(time=new_time).interpolate_na(
-            dim='time', method=method, fill_value="extrapolate"
+            dim='time', method=method, 
+            fill_value='extrapolate', 
+            max_gap=max_gap
         )
     return new_ds
 
