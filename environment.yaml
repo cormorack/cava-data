@@ -29,6 +29,7 @@ dependencies:
   - pip
   - xlrd
   - pyarrow
+  - bottleneck
   - toolz
   - gspread
   - loguru
