@@ -125,7 +125,7 @@ class OOIDataset:
         # Get data arrays
         for k, v in self.variables.items():
             key = {
-                dim: pos_indexes[dim] if dim in pos_indexes else slice(None)
+                dim: slice(pos_indexes[dim][0], pos_indexes[dim][-1]) if dim in pos_indexes else slice(None)
                 for dim in v.dims
             }
             with dask.config.set(**{'array.slicing.split_large_chunks': True}):
