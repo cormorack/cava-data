@@ -32,6 +32,11 @@ def list_datasets():
     return get_ds()
 
 
+@router.get("/status")
+def get_service_status():
+    return {"status":"running","message":"Data service is up."}
+
+
 # ------------ CATALOG ENDPOINTS ------------------------
 @router.get("/catalog")
 async def get_catalog(streams_only: bool = False) -> JSONResponse:
