@@ -1,4 +1,7 @@
 import time
+from datetime import datetime
+import yaml
+import zipfile
 import logging
 import os
 import re
@@ -149,13 +152,14 @@ def _interp_ds(
     ds: xr.Dataset,
     new_time: Union[pd.DatetimeIndex, da.Array],
     method: str = 'nearest',
-    max_gap: pd.Timedelta = pd.Timedelta(1, unit='D')
+    max_gap: pd.Timedelta = pd.Timedelta(1, unit='D'),
 ) -> xr.Dataset:
     with dask.config.set(**{'array.slicing.split_large_chunks': True}):
         new_ds = ds.interp(time=new_time).interpolate_na(
-            dim='time', method=method, 
-            fill_value='extrapolate', 
-            max_gap=max_gap
+            dim='time',
+            method=method,
+            fill_value='extrapolate',
+            max_gap=max_gap,
         )
     return new_ds
 
@@ -273,9 +277,9 @@ def fetch(
     axis_params,
     start_dt,
     end_dt,
-    download,
-    download_format,
-    status_dict,
+    download=False,
+    download_format='netcdf',
+    status_dict={},
 ):
     self.update_state(
         state="PROGRESS",
@@ -393,6 +397,45 @@ def fetch(
             )
             self.update_state(state="PROGRESS", meta=status_dict)
             result = None
+        elif data_count > 0 and download:
+            status_dict.update({"msg": "Preparing dataset for download..."})
+            self.update_state(state="PROGRESS", meta=status_dict)
+            format_ext = {'netcdf': 'nc', 'csv': 'csv'}
+
+            dstring = f"{start_dt}_{end_dt}"
+            ncfile = f"{dstring}.{format_ext[download_format]}"
+            merged.to_netcdf(ncfile)
+            zipname = f"CAVA_{datetime.utcnow().strftime('%Y%m%dT%H%M%S')}.zip"
+
+            download_bucket = "ooi-data-download"
+            cache_location = f"s3://{download_bucket}"
+
+            fs = fsspec.get_mapper(cache_location).fs
+
+            target_url = os.path.join(
+                cache_location, os.path.basename(zipname)
+            )
+            with fs.open(target_url, mode='wb') as f:
+                with zipfile.ZipFile(
+                    f, 'w', compression=zipfile.ZIP_DEFLATED
+                ) as zf:
+                    status_dict.update({"msg": "Creating zip file..."})
+                    self.update_state(state="PROGRESS", meta=status_dict)
+                    zf.writestr(
+                        'meta.yaml',
+                        yaml.dump(
+                            {
+                                'reference_designators': request_params,
+                                'axis_parameters': axis_params,
+                                'start_datetime': start_dt,
+                                'end_datetime': end_dt,
+                            }
+                        ),
+                    )
+                    zf.write(ncfile)
+                    os.unlink(ncfile)
+            download_url = f"https://{download_bucket}.s3.us-west-2.amazonaws.com/{zipname}"
+            result = {"file_url": download_url}
         else:
             status_dict.update({"msg": "Plotting merged datasets..."})
             self.update_state(state="PROGRESS", meta=status_dict)

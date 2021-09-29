@@ -7,14 +7,17 @@ from .data_fetcher import fetch
 def perform_fetch_task(self, data_request):
     try:
         request_params = data_request["ref"].split(",")
-        download = data_request["download"]
+        download = data_request.get('download', False)
         # TODO: For now use z as color, need to change in future, esp for 3D
         axis_params = {
             "x": data_request['x'],
             "y": data_request['y'],
             "z": data_request['color'],
         }
-        download_format = data_request['download_format']
+
+        download_format = data_request.get('download_format', 'netcdf4')
+        if not download_format:
+            download_format = 'netcdf4'
 
         job_type = "download" if download else "plot"
         status_dict = {
