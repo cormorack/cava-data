@@ -1,4 +1,6 @@
 import time
+import glob
+import shutil
 from datetime import datetime
 import yaml
 import zipfile
@@ -403,8 +405,18 @@ def fetch(
             format_ext = {'netcdf': 'nc', 'csv': 'csv'}
 
             dstring = f"{start_dt}_{end_dt}"
-            ncfile = f"{dstring}.{format_ext[download_format]}"
-            merged.to_netcdf(ncfile)
+
+            if download_format == 'csv':
+                ddf = merged.to_dask_dataframe().repartition(
+                    partition_size='10MB'
+                )
+                ncfile = dstring
+                outglob = os.path.join(ncfile, '*.csv')
+                ddf.to_csv(outglob, index=False)
+            elif download_format == 'netcdf':
+                ncfile = f"{dstring}.{format_ext[download_format]}"
+                merged.to_netcdf(ncfile)
+
             zipname = f"CAVA_{datetime.utcnow().strftime('%Y%m%dT%H%M%S')}.zip"
 
             download_bucket = "ooi-data-download"
@@ -432,8 +444,14 @@ def fetch(
                             }
                         ),
                     )
-                    zf.write(ncfile)
-                    os.unlink(ncfile)
+                    if download_format == 'csv':
+                        csvs = sorted(glob.glob(outglob))
+                        for csv in csvs:
+                            zf.write(csv)
+                        shutil.rmtree(ncfile)
+                    else:
+                        zf.write(ncfile)
+                        os.unlink(ncfile)
             download_url = f"https://{download_bucket}.s3.us-west-2.amazonaws.com/{zipname}"
             result = {"file_url": download_url}
         else:
