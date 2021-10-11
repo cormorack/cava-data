@@ -34,7 +34,7 @@ def list_datasets():
 
 @router.get("/status")
 def get_service_status():
-    return {"status":"running","message":"Data service is up."}
+    return {"status": "running", "message": "Data service is up."}
 
 
 # ------------ CATALOG ENDPOINTS ------------------------

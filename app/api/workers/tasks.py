@@ -39,11 +39,18 @@ def perform_fetch_task(self, data_request):
             status_dict,
         )
         if result is not None:
-            return {
-                "status": "completed",
-                "result": result,
-                "msg": "Result finished.",
-            }
+            if job_type == "download" and result["file_url"] is None:
+                return {
+                    "status": "completed",
+                    "result": None,
+                    "msg": result["msg"],
+                }
+            else:
+                return {
+                    "status": "completed",
+                    "result": result,
+                    "msg": "Result finished.",
+                }
         else:
             return {
                 "status": "completed",
@@ -54,5 +61,5 @@ def perform_fetch_task(self, data_request):
         return {
             "status": "cancelled",
             "result": None,
-            "msg": "Job was cancelled by user."
+            "msg": "Job was cancelled by user.",
         }

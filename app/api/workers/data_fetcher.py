@@ -405,55 +405,69 @@ def fetch(
             format_ext = {'netcdf': 'nc', 'csv': 'csv'}
 
             dstring = f"{start_dt}_{end_dt}"
+            continue_download = True
 
             if download_format == 'csv':
                 ddf = merged.to_dask_dataframe().repartition(
                     partition_size='10MB'
                 )
-                ncfile = dstring
-                outglob = os.path.join(ncfile, '*.csv')
-                ddf.to_csv(outglob, index=False)
+                # Max npartitions to 50
+                if ddf.npartitions > 50:
+                    message = "The amount of data to be downloaded is too large for CSV data format. Please make a smaller request."
+                    result = {
+                        "file_url": None,
+                        "msg": message,
+                    }
+                    continue_download = False
+                else:
+                    ncfile = dstring
+                    outglob = os.path.join(ncfile, '*.csv')
+                    ddf.to_csv(outglob, index=False)
             elif download_format == 'netcdf':
+                # TODO: Create mechanism to split large nc file
                 ncfile = f"{dstring}.{format_ext[download_format]}"
                 merged.to_netcdf(ncfile)
 
-            zipname = f"CAVA_{datetime.utcnow().strftime('%Y%m%dT%H%M%S')}.zip"
+            if continue_download:
+                zipname = (
+                    f"CAVA_{datetime.utcnow().strftime('%Y%m%dT%H%M%S')}.zip"
+                )
 
-            download_bucket = "ooi-data-download"
-            cache_location = f"s3://{download_bucket}"
+                download_bucket = "ooi-data-download"
+                cache_location = f"s3://{download_bucket}"
 
-            fs = fsspec.get_mapper(cache_location).fs
+                fs = fsspec.get_mapper(cache_location).fs
 
-            target_url = os.path.join(
-                cache_location, os.path.basename(zipname)
-            )
-            with fs.open(target_url, mode='wb') as f:
-                with zipfile.ZipFile(
-                    f, 'w', compression=zipfile.ZIP_DEFLATED
-                ) as zf:
-                    status_dict.update({"msg": "Creating zip file..."})
-                    self.update_state(state="PROGRESS", meta=status_dict)
-                    zf.writestr(
-                        'meta.yaml',
-                        yaml.dump(
-                            {
-                                'reference_designators': request_params,
-                                'axis_parameters': axis_params,
-                                'start_datetime': start_dt,
-                                'end_datetime': end_dt,
-                            }
-                        ),
-                    )
-                    if download_format == 'csv':
-                        csvs = sorted(glob.glob(outglob))
-                        for csv in csvs:
-                            zf.write(csv)
-                        shutil.rmtree(ncfile)
-                    else:
-                        zf.write(ncfile)
-                        os.unlink(ncfile)
-            download_url = f"https://{download_bucket}.s3.us-west-2.amazonaws.com/{zipname}"
-            result = {"file_url": download_url}
+                target_url = os.path.join(
+                    cache_location, os.path.basename(zipname)
+                )
+                with fs.open(target_url, mode='wb') as f:
+                    with zipfile.ZipFile(
+                        f, 'w', compression=zipfile.ZIP_DEFLATED
+                    ) as zf:
+                        status_dict.update({"msg": "Creating zip file..."})
+                        self.update_state(state="PROGRESS", meta=status_dict)
+                        zf.writestr(
+                            'meta.yaml',
+                            yaml.dump(
+                                {
+                                    'reference_designators': request_params,
+                                    'axis_parameters': axis_params,
+                                    'start_datetime': start_dt,
+                                    'end_datetime': end_dt,
+                                }
+                            ),
+                        )
+                        if download_format == 'csv':
+                            csvs = sorted(glob.glob(outglob))
+                            for csv in csvs:
+                                zf.write(csv)
+                            shutil.rmtree(ncfile)
+                        else:
+                            zf.write(ncfile)
+                            os.unlink(ncfile)
+                download_url = f"https://{download_bucket}.s3.us-west-2.amazonaws.com/{zipname}"
+                result = {"file_url": download_url}
         else:
             status_dict.update({"msg": "Plotting merged datasets..."})
             self.update_state(state="PROGRESS", meta=status_dict)
