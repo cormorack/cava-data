@@ -19,6 +19,7 @@ import hvplot.xarray  # noqa
 import pandas as pd
 from dask_kubernetes import KubeCluster, make_pod_spec
 from dask.distributed import Client
+import math
 from typing import Union
 from .models import OOIDataset
 
@@ -282,6 +283,8 @@ def fetch(
     download=False,
     download_format='netcdf',
     status_dict={},
+    max_nfiles=50,
+    max_partition_sizes={'netcdf': '100MB', 'csv': '10MB'},
 ):
     self.update_state(
         state="PROGRESS",
@@ -409,10 +412,10 @@ def fetch(
 
             if download_format == 'csv':
                 ddf = merged.to_dask_dataframe().repartition(
-                    partition_size='10MB'
+                    partition_size=max_partition_sizes[download_format]
                 )
                 # Max npartitions to 50
-                if ddf.npartitions > 50:
+                if ddf.npartitions > max_nfiles:
                     message = "The amount of data to be downloaded is too large for CSV data format. Please make a smaller request."
                     result = {
                         "file_url": None,
@@ -421,12 +424,44 @@ def fetch(
                     continue_download = False
                 else:
                     ncfile = dstring
-                    outglob = os.path.join(ncfile, '*.csv')
+                    outglob = os.path.join(
+                        ncfile, f'*.{format_ext[download_format]}'
+                    )
                     ddf.to_csv(outglob, index=False)
             elif download_format == 'netcdf':
-                # TODO: Create mechanism to split large nc file
-                ncfile = f"{dstring}.{format_ext[download_format]}"
-                merged.to_netcdf(ncfile)
+                max_chunk_size = dask.utils.parse_bytes(
+                    max_partition_sizes[download_format]
+                )
+                smallest_chunk = math.ceil(
+                    merged.time.shape[0] / (merged.nbytes / max_chunk_size)
+                )
+                slices = [
+                    (i, i + smallest_chunk)
+                    for i in range(0, merged.time.shape[0], smallest_chunk)
+                ]
+                # Max npartitions to 50
+                if len(slices) > max_nfiles:
+                    message = "The amount of data to be downloaded is too large for NetCDF data format. Please make a smaller request."
+                    result = {
+                        "file_url": None,
+                        "msg": message,
+                    }
+                    continue_download = False
+                else:
+                    if len(slices) == 1:
+                        ncfile = f"{dstring}.{format_ext[download_format]}"
+                        merged.to_netcdf(ncfile)
+                    else:
+                        ncfile = dstring
+                        outglob = os.path.join(
+                            ncfile, f'*.{format_ext[download_format]}'
+                        )
+                        if not os.path.exists(ncfile):
+                            os.mkdir(ncfile)
+                        for idx, sl in enumerate(slices):
+                            nc_name = f"{idx}.nc"
+                            part_ds = merged.isel(time=slice(*sl))
+                            part_ds.to_netcdf(os.path.join(ncfile, nc_name))
 
             if continue_download:
                 zipname = (
@@ -458,10 +493,12 @@ def fetch(
                                 }
                             ),
                         )
-                        if download_format == 'csv':
-                            csvs = sorted(glob.glob(outglob))
-                            for csv in csvs:
-                                zf.write(csv)
+                        if os.path.isdir(ncfile):
+                            # if ncfile is directory,
+                            # there should be an outglob variable
+                            data_files = sorted(glob.glob(outglob))
+                            for data_file in data_files:
+                                zf.write(data_file)
                             shutil.rmtree(ncfile)
                         else:
                             zf.write(ncfile)
