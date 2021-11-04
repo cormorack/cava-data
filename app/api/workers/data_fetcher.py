@@ -19,6 +19,7 @@ import hvplot.xarray  # noqa
 import pandas as pd
 from dask_kubernetes import KubeCluster, make_pod_spec
 from dask.distributed import Client
+from dateutil import parser
 import math
 from typing import Union
 from .models import OOIDataset
@@ -406,8 +407,9 @@ def fetch(
             status_dict.update({"msg": "Preparing dataset for download..."})
             self.update_state(state="PROGRESS", meta=status_dict)
             format_ext = {'netcdf': 'nc', 'csv': 'csv'}
-
-            dstring = f"{start_dt}_{end_dt}"
+            start_dt_str = parser.parse(start_dt).strftime('%Y%m%dT%H%M%S')
+            end_dt_str = parser.parse(end_dt).strftime('%Y%m%dT%H%M%S')
+            dstring = f"{start_dt_str}_{end_dt_str}"
             continue_download = True
 
             if download_format == 'csv':
