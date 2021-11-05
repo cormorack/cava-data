@@ -12,18 +12,19 @@ dependencies:
   - uvicorn
   - gunicorn
   - redis-py
-  - xarray
+  - xarray<0.18
   - zarr
   - dask
   - dask-kubernetes
   - netcdf4
-  - s3fs==2021.10.1
+  - s3fs==0.5.2
+  - aiobotocore==1.2.1
   - intake
   - intake-xarray
   - numcodecs
   - datashader
   - hvplot
-  - fsspec
+  - fsspec==0.8.7
   - numba
   - numpy
   - pip
