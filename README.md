@@ -1,6 +1,6 @@
 # cava-data
 
-[![Cabled Array Official](https://tinyurl.com/ca-official)]()
+[![Cabled Array Official](https://tinyurl.com/ca-official)](#)
 
 Cabled Array Data Access Interface
 
