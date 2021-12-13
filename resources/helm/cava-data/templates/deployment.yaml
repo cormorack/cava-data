@@ -52,5 +52,11 @@ spec:
           imagePullPolicy: {{ .Values.image.pullPolicy }}
           resources:
             {{- toYaml .Values.resources | nindent 12 }}
+          livenessProbe:
+            httpGet:
+              path: {{ .Values.path }}/status
+              port: {{ .Values.service.containerPort }}
+            initialDelaySeconds: 10
+            periodSeconds: 5
           ports:
             - containerPort: {{ .Values.service.containerPort }}
