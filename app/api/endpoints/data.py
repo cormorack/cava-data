@@ -112,7 +112,7 @@ async def view_data_stream_dataset(data_stream: str) -> Any:
 
 
 @router.get("/job/{uid}")
-def get_job(uid: str, version: str = str(settings.CURRENT_API_VERSION)):
+async def get_job(uid: str, version: str = str(settings.CURRENT_API_VERSION)):
     try:
         task = perform_fetch_task.AsyncResult(uid)
         response = {}
@@ -226,7 +226,7 @@ def data_request_check(request: Request, data_request: DataRequest):
 
 
 @router.post("/", status_code=202)
-def request_data(request: Request, data_request: DataRequest):
+async def request_data(request: Request, data_request: DataRequest):
     try:
         task = perform_fetch_task.apply_async(args=(data_request.dict(),))
         request_uuid = task.id
