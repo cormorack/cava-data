@@ -287,10 +287,6 @@ def fetch(
     max_nfiles=50,
     max_partition_sizes={'netcdf': '100MB', 'csv': '10MB'},
 ):
-    self.update_state(
-        state="PROGRESS",
-        meta=status_dict,
-    )
     ds_list = get_delayed_ds(request_params, axis_params)
 
     status_dict.update({"msg": f"{len(request_params)} datasets requested."})
@@ -305,39 +301,43 @@ def fetch(
     client = None
     cluster = None
 
-    if max_mem_size > data_threshold:
-        image_repo, image_name, image_tag = (
-            'cormorack',
-            'cava-dask',
-            '20210610',
-        )
-        desired_image = os.environ.get(
-            "DASK_DOCKER_IMAGE", f"{image_repo}/{image_name}:{image_tag}"
-        )
-        match = re.match(r"(.+)/(.+):(.+)", desired_image)
-        if match is not None:
-            image_repo, image_name, image_tag = match.groups()
-        dask_spec = determine_workers(
-            max_mem_size,
-            image_repo=image_repo,
-            image_name=image_name,
-            image_tag=image_tag,
-        )
+    # TODO: Figure out using distributed from a 
+    #       central dask cluster
+    # if max_mem_size > data_threshold:
+    #     image_repo, image_name, image_tag = (
+    #         'cormorack',
+    #         'cava-dask',
+    #         '20210610',
+    #     )
+    #     desired_image = os.environ.get(
+    #         "DASK_DOCKER_IMAGE", f"{image_repo}/{image_name}:{image_tag}"
+    #     )
+    #     match = re.match(r"(.+)/(.+):(.+)", desired_image)
+    #     if match is not None:
+    #         image_repo, image_name, image_tag = match.groups()
+    #     dask_spec = determine_workers(
+    #         max_mem_size,
+    #         image_repo=image_repo,
+    #         image_name=image_name,
+    #         image_tag=image_tag,
+    #     )
 
-        status_dict.update(
-            {
-                "msg": f"Setting up distributed computing cluster. Max data size: {memory_repr(max_data_size)}"
-            }
-        )
-        self.update_state(state="PROGRESS", meta=status_dict)
-        cluster = KubeCluster(
-            dask_spec['pod_spec'],
-            n_workers=dask_spec['min_workers'],
-        )
-        cluster.adapt(
-            minimum=dask_spec['min_workers'], maximum=dask_spec['max_workers']
-        )
-        client = Client(cluster)
+    #     status_dict.update(
+    #         {
+    #             "msg": f"Setting up distributed computing cluster. Max data size: {memory_repr(max_data_size)}"
+    #         }
+    #     )
+    #     self.update_state(state="PROGRESS", meta=status_dict)
+    #     cluster = KubeCluster(
+    #         dask_spec['pod_spec'],
+    #         n_workers=dask_spec['min_workers'],
+    #     )
+    #     cluster.adapt(
+    #         minimum=dask_spec['min_workers'], maximum=dask_spec['max_workers']
+    #     )
+    #     client = Client(cluster)
+
+
     # TODO: Need to add other parameters for multidimensional
     # need a check for nutnr,pco2,ph,optaa add int_ctd_pressure
     # parameters.append("int_ctd_pressure")

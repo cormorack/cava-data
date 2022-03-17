@@ -1,15 +1,17 @@
 import logging
 from typing import Any
-from fastapi import APIRouter
-from fastapi.responses import JSONResponse, HTMLResponse
+from fastapi import APIRouter, Depends
+from fastapi.responses import JSONResponse, HTMLResponse, Response
 from starlette.requests import Request
 import yaml
+import msgpack
 
 import xarray as xr
 from dask.utils import memory_repr
 import numpy as np
 
 from app.core.celery_app import celery_app
+from app.core.config import settings
 from ...store import CENTRAL_STORE
 from ..utils import get_ds
 from ...models import DataRequest, CancelConfig
@@ -110,34 +112,57 @@ async def view_data_stream_dataset(data_stream: str) -> Any:
 
 
 @router.get("/job/{uid}")
-def get_job(uid: str):
-    task = perform_fetch_task.AsyncResult(uid)
-    response = {}
-    if task.state == 'PENDING':
-        # job did not start yet
-        response.update(
-            {
-                'state': task.state,
-                'status': 'pending',
+def get_job(uid: str, version: str = str(settings.CURRENT_API_VERSION)):
+    try:
+        task = perform_fetch_task.AsyncResult(uid)
+        response = {}
+        if task.state == 'PENDING':
+            # job did not start yet
+            response.update(
+                {
+                    'state': task.state,
+                    'status': 'pending',
+                    'result': None,
+                    'msg': f'Job {uid} has not started.',
+                }
+            )
+        elif task.state != 'FAILURE':
+            # pending/success
+            response.update({'state': task.state})
+            response.update(task.info)
+        else:
+            # something went wrong in the background job
+            response.update(
+                {
+                    'state': task.state,
+                    'status': 'job-exception',
+                    'result': None,
+                    'msg': str(task.info),  # this is the exception raised
+                }
+            )
+
+        if version == str(settings.CURRENT_API_VERSION):
+            return JSONResponse(status_code=200, content=response)
+        elif version == "2.1":
+            return Response(
+                status_code=200,
+                content=msgpack.packb(response),
+                media_type="application/x-msgpack",
+            )
+        else:
+            return JSONResponse(
+                status_code=400, content=f"Version {version} is invalid"
+            )
+    except Exception as e:
+        return JSONResponse(
+            content={
+                'status': 'query-exception',
+                'state': None,
                 'result': None,
-                'msg': f'Job {uid} has not started.',
-            }
+                'msg': f"Error occured during query: {str(e)}",
+            },
+            status_code=500,
         )
-    elif task.state != 'FAILURE':
-        # pending/success
-        response.update({'state': task.state})
-        response.update(task.info)
-    else:
-        # something went wrong in the background job
-        response.update(
-            {
-                'state': task.state,
-                'status': 'job-exception',
-                'result': None,
-                'msg': str(task.info),  # this is the exception raised
-            }
-        )
-    return response
 
 
 @router.post("/job/{uid}/cancel", status_code=202)

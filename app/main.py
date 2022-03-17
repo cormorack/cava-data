@@ -13,6 +13,7 @@ from .api.main import api_router
 from .api.endpoints import data
 from .core.config import settings
 from .scripts import LoadDataCatalog, LoadShipData
+from .cache.redis import RedisDependency
 
 logging.root.setLevel(level=logging.INFO)
 logger = logging.getLogger('uvicorn')
@@ -49,6 +50,7 @@ app.mount("/data/static", app.state.static, name="static")
 @app.on_event("startup")
 async def startup_event():
     LoadDataCatalog()
+    await RedisDependency().init()
     # LoadShipData()
 
 # Prometheus instrumentation

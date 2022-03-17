@@ -1,9 +1,11 @@
 import os
+import json
+import hashlib
 
 import xarray as xr
 import xpublish  # noqa
 
-from pydantic import BaseModel
+from pydantic import BaseModel, PrivateAttr
 from typing import Optional
 from .core.config import settings
 
@@ -18,6 +20,17 @@ class DataRequest(BaseModel):
     color: str = ""
     download_format: str = "netcdf"
     download: bool = False
+
+    _key: str = PrivateAttr()
+
+    def __init__(self, **data):
+        super().__init__(**data)
+        self._set_key()
+
+    def _set_key(self):
+        encoded_json = json.dumps(self.dict()).encode('utf-8')
+        md5_hash = hashlib.md5(encoded_json)
+        self._key = md5_hash.hexdigest()
 
 
 class CancelConfig(BaseModel):

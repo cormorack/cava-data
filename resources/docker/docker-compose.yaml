@@ -18,6 +18,7 @@ services:
       - LOOP=asyncio
       - HTTP=h11
       - GOOGLE_SERVICE_JSON=${GOOGLE_SERVICE_JSON}
+      - REDIS_URI=redis://redis-service
     networks:
       - cava-network
   celery-worker:
