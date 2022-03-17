@@ -12,19 +12,20 @@ dependencies:
   - uvicorn
   - gunicorn
   - redis-py
-  - xarray<0.18
+  - aioredis
+  - msgpack-python
+  - xarray
   - zarr
   - dask
   - dask-kubernetes
   - netcdf4
-  - s3fs==0.5.2
-  - aiobotocore==1.2.1
+  - s3fs
   - intake
   - intake-xarray
   - numcodecs
   - datashader
   - hvplot
-  - fsspec==0.8.7
+  - fsspec
   - numba
   - numpy
   - pip
@@ -37,6 +38,6 @@ dependencies:
   - celery
   - pika
   - prometheus-fastapi-instrumentator
-  - pip=20
+  - pip=22
   - pip:
     - git+https://github.com/jhamman/xpublish.git@master
