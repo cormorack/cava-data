@@ -267,8 +267,15 @@ def get_delayed_ds(
     for dataset_id in request_params:
         ooids = OOIDataset(dataset_id)[parameters]
         total_size = np.sum([v.nbytes for v in ooids.variables.values()])
+        dim_size = np.sum(
+            [
+                ooids._dataset_dict['variables'][dim].nbytes
+                for dim in ooids._dataset_dict['dims']
+            ]
+        )
         ds_list[dataset_id] = {
             'total_size': total_size,
+            'total_dim_size': dim_size,
         }
         if include_dataset:
             ds_list[dataset_id].update({'dataset': ooids})
@@ -293,7 +300,9 @@ def fetch(
     self.update_state(state="PROGRESS", meta=status_dict)
 
     max_data_size = np.sum([v['total_size'] for v in ds_list.values()])
+    max_dims_size = np.sum([v['total_dim_size'] for v in ds_list.values()])
     max_mem_size = max_data_size / 1024 ** 3
+    max_host_mem_size = max_dims_size / 1024 ** 3
 
     dask_spec = {'min_workers': 1, 'max_workers': 2}
     data_threshold = os.environ.get('DATA_THRESHOLD', 50)
@@ -301,42 +310,54 @@ def fetch(
     client = None
     cluster = None
 
-    # TODO: Figure out using distributed from a 
+    if max_host_mem_size > 15:
+        status_dict.update(
+            {
+                "msg": f"Max dimension size of {memory_repr(max_host_mem_size)} is too large at this time"  # noqa
+            }
+        )
+        self.update_state(state="PROGRESS", meta=status_dict)
+        time.sleep(2)
+        result = None
+        return result
+
+    # TODO: Figure out using distributed from a
     #       central dask cluster
-    # if max_mem_size > data_threshold:
-    #     image_repo, image_name, image_tag = (
-    #         'cormorack',
-    #         'cava-dask',
-    #         '20210610',
-    #     )
-    #     desired_image = os.environ.get(
-    #         "DASK_DOCKER_IMAGE", f"{image_repo}/{image_name}:{image_tag}"
-    #     )
-    #     match = re.match(r"(.+)/(.+):(.+)", desired_image)
-    #     if match is not None:
-    #         image_repo, image_name, image_tag = match.groups()
-    #     dask_spec = determine_workers(
-    #         max_mem_size,
-    #         image_repo=image_repo,
-    #         image_name=image_name,
-    #         image_tag=image_tag,
-    #     )
-
-    #     status_dict.update(
-    #         {
-    #             "msg": f"Setting up distributed computing cluster. Max data size: {memory_repr(max_data_size)}"
-    #         }
-    #     )
-    #     self.update_state(state="PROGRESS", meta=status_dict)
-    #     cluster = KubeCluster(
-    #         dask_spec['pod_spec'],
-    #         n_workers=dask_spec['min_workers'],
-    #     )
-    #     cluster.adapt(
-    #         minimum=dask_spec['min_workers'], maximum=dask_spec['max_workers']
-    #     )
-    #     client = Client(cluster)
-
+    if max_mem_size > data_threshold:
+        # Spinning up the dask cluster is too slow
+        # disabled for now
+        # image_repo, image_name, image_tag = (
+        #     'cormorack',
+        #     'cava-dask',
+        #     '20210610',
+        # )
+        # desired_image = os.environ.get(
+        #     "DASK_DOCKER_IMAGE", f"{image_repo}/{image_name}:{image_tag}"
+        # )
+        # match = re.match(r"(.+)/(.+):(.+)", desired_image)
+        # if match is not None:
+        #     image_repo, image_name, image_tag = match.groups()
+        # dask_spec = determine_workers(
+        #     max_mem_size,
+        #     image_repo=image_repo,
+        #     image_name=image_name,
+        #     image_tag=image_tag,
+        # )
+        # status_dict.update(
+        #     {
+        #         "msg": f"Setting up distributed computing cluster. Max data size: {memory_repr(max_data_size)}"
+        #     }
+        # )
+        # self.update_state(state="PROGRESS", meta=status_dict)
+        # cluster = KubeCluster(
+        #     dask_spec['pod_spec'],
+        #     n_workers=dask_spec['min_workers'],
+        # )
+        # cluster.adapt(
+        #     minimum=dask_spec['min_workers'], maximum=dask_spec['max_workers']
+        # )
+        # client = Client(cluster)
+        ...
 
     # TODO: Need to add other parameters for multidimensional
     # need a check for nutnr,pco2,ph,optaa add int_ctd_pressure
