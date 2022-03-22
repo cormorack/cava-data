@@ -23,9 +23,10 @@ from dateutil import parser
 import math
 from typing import Union
 from .models import OOIDataset
+from loguru import logger
 
-logger = logging.getLogger(__name__)
-logging.root.setLevel(level=logging.INFO)
+# logger = logging.getLogger(__name__)
+# logging.root.setLevel(level=logging.INFO)
 
 
 # ------------------ Helper Functions ------------------------
@@ -264,6 +265,7 @@ def get_delayed_ds(
         parameters.append("time")
 
     ds_list = {}
+    logger.info("Getting Lazy OOIDataset")
     for dataset_id in request_params:
         ooids = OOIDataset(dataset_id)[parameters]
         total_size = np.sum([v.nbytes for v in ooids.variables.values()])
@@ -279,6 +281,7 @@ def get_delayed_ds(
         }
         if include_dataset:
             ds_list[dataset_id].update({'dataset': ooids})
+    logger.info(ds_list)
     return ds_list
 
 
@@ -294,6 +297,7 @@ def fetch(
     max_nfiles=50,
     max_partition_sizes={'netcdf': '100MB', 'csv': '10MB'},
 ):
+    logger.info("Starting to fetch...")
     ds_list = get_delayed_ds(request_params, axis_params)
 
     status_dict.update({"msg": f"{len(request_params)} datasets requested."})
