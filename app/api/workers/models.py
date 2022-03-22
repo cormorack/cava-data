@@ -8,7 +8,6 @@ from typing import Union
 import fsspec
 import zarr
 import numpy as np
-from loguru import logger
 import s3fs
 import aiobotocore
 
@@ -72,26 +71,17 @@ class OOIDataset:
         return new_self
 
     def _open_zarr(self):
-        logger.info("Opening zarr...")
-        logger.info(f"Zarr version: {zarr.__version__}")
-        logger.info(f"Fsspec version: {fsspec.__version__}")
-        logger.info(f"Xarray version: {xr.__version__}")
-        logger.info(f"s3fs version: {s3fs.__version__}")
-        logger.info(f"aiobotocore version: {aiobotocore.__version__}")
         self._zarr_group = zarr.open_group(
             store=f's3://{self.bucket_name}/{self.dataset_id}',
             mode="r+",
             storage_options=self.storage_options,
         )
-        logger.info("Calculating total size...")
         self._total_size = np.sum(
             [arr.nbytes for _, arr in self._zarr_group.items()]
         )
-        logger.info("Create total size repr")
         self._total_size_repr = memory_repr(self._total_size)
 
     def _parse_zarr_group(self):
-        logger.info("Parsing zarr groups.")
         all_dims = []
         for k in self._zarr_group.array_keys():
             arr = self._zarr_group[k]
@@ -114,7 +104,6 @@ class OOIDataset:
         self.global_attributes = self._zarr_group.attrs.asdict()
 
     def _set_variables(self):
-        logger.info("Setting variables")
         for name, data_array in self.variables.items():
             setattr(self, name, data_array)
 

@@ -2,15 +2,19 @@ from typing import Any, Dict
 import asyncio
 import functools
 
-from loguru import logger
+import logging
 
 from app.core.celery_app import celery_app
 from celery.exceptions import SoftTimeLimitExceeded
 from .data_fetcher import fetch
 
+logger = logging.getLogger(__name__)
+logging.root.setLevel(level=logging.INFO)
+
 
 def sync(f):
     """Decorater to make async to sync for a solo pool within celery worker"""
+
     @functools.wraps(f)
     def wrapper(*args, **kwargs):
         return asyncio.get_event_loop().run_until_complete(f(*args, **kwargs))
@@ -60,7 +64,6 @@ def perform_fetch_task(
             download_format,
             status_dict,
         )
-        logger.info("Result done.")
         if result is not None:
             if job_type == "download" and result["file_url"] is None:
                 return {
