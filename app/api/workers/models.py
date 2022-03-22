@@ -8,6 +8,8 @@ from typing import Union
 import fsspec
 import zarr
 import numpy as np
+import s3fs
+import aiobotocore
 
 from dask.utils import memory_repr
 import dask.array as da
@@ -69,11 +71,11 @@ class OOIDataset:
         return new_self
 
     def _open_zarr(self):
-        fmap = fsspec.get_mapper(
-            f's3://{self.bucket_name}/{self.dataset_id}',
-            **self.storage_options,
+        self._zarr_group = zarr.open_group(
+            store=f's3://{self.bucket_name}/{self.dataset_id}',
+            mode="r+",
+            storage_options=self.storage_options,
         )
-        self._zarr_group = zarr.open_consolidated(fmap)
         self._total_size = np.sum(
             [arr.nbytes for _, arr in self._zarr_group.items()]
         )
@@ -125,7 +127,9 @@ class OOIDataset:
         # Get data arrays
         for k, v in self.variables.items():
             key = {
-                dim: slice(pos_indexes[dim][0], pos_indexes[dim][-1]) if dim in pos_indexes else slice(None)
+                dim: slice(pos_indexes[dim][0], pos_indexes[dim][-1])
+                if dim in pos_indexes
+                else slice(None)
                 for dim in v.dims
             }
             with dask.config.set(**{'array.slicing.split_large_chunks': True}):
@@ -226,10 +230,10 @@ class OOIDataset:
 
                 if 'units' in arr.attrs:
                     time_units = arr.attrs['units']
-                
+
                 if 'calendar' in arr.attrs:
                     calendar = arr.attrs['calendar']
- 
+
                 self.__time_filter, _, _ = xr.coding.times.encode_cf_datetime(
                     [start_dt, end_dt], time_units, calendar
                 )

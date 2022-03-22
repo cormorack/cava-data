@@ -1,10 +1,7 @@
 from celery import Celery
 from .config import settings
+from app.core import celeryconfig
 
-celery_app = Celery(
-    "cava-data", broker=settings.RABBITMQ_URI, backend=settings.REDIS_URI
-)
+celery_app = Celery("cava-data")
 
-celery_app.conf.task_routes = {
-    "app.api.workers.tasks.perform_fetch_task": {"queue": "data-queue"}
-}
+celery_app.config_from_object(celeryconfig)

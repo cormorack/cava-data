@@ -1,3 +1,4 @@
+from datetime import datetime, timedelta
 import logging
 from typing import Any
 from fastapi import APIRouter, Depends
@@ -9,9 +10,12 @@ import msgpack
 import xarray as xr
 from dask.utils import memory_repr
 import numpy as np
+import aioredis
 
 from app.core.celery_app import celery_app
+from app.core.celeryconfig import result_expires
 from app.core.config import settings
+from app.cache.redis import redis_dependency
 from ...store import CENTRAL_STORE
 from ..utils import get_ds
 from ...models import DataRequest, CancelConfig
@@ -226,10 +230,26 @@ def data_request_check(request: Request, data_request: DataRequest):
 
 
 @router.post("/", status_code=202)
-async def request_data(request: Request, data_request: DataRequest):
+async def request_data(
+    request: Request,
+    data_request: DataRequest,
+    cache: aioredis.client.Redis = Depends(redis_dependency),
+):
     try:
-        task = perform_fetch_task.apply_async(args=(data_request.dict(),))
-        request_uuid = task.id
+        cache_key = data_request._key
+        cached_result = await cache.get(cache_key)
+        if cached_result is not None:
+            request_uuid = cached_result.decode('utf-8')
+        else:
+            task = perform_fetch_task.apply_async(args=(data_request.dict(),))
+            request_uuid = task.id
+            # expires 5 minutes before the result expires for celery
+            expire_time = result_expires - timedelta(minutes=5)
+            await cache.set(
+                cache_key,
+                request_uuid.encode('utf-8'),
+                ex=int(expire_time.total_seconds()),
+            )
         return {
             "status": "success",
             "job_uuid": str(request_uuid),

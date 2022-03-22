@@ -6,7 +6,6 @@ import yaml
 import zipfile
 import logging
 import os
-import re
 import dask
 from dask.utils import memory_repr
 import dask.array as da

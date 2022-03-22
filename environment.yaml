@@ -19,13 +19,14 @@ dependencies:
   - dask
   - dask-kubernetes
   - netcdf4
-  - s3fs
+  - s3fs==0.5.2
+  - fsspec==0.8.7
+  - aiobotocore==1.2.1
   - intake
   - intake-xarray
   - numcodecs
   - datashader
   - hvplot
-  - fsspec
   - numba
   - numpy
   - pip
