@@ -23,6 +23,8 @@ services:
       context: ../../
       dockerfile: ./resources/docker/Dockerfile
     image: cormorack/cava-data:${TAG}
+    deploy:
+      replicas: 2
     command: celery -A cava_data.api.workers.tasks worker -E -l info -Q data-queue -c 1 -P solo
     volumes:
       - ../../:/app/:consistent
