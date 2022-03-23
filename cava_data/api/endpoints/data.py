@@ -119,7 +119,6 @@ async def view_data_stream_dataset(data_stream: str) -> Any:
 async def get_job(uid: str, version: str = str(settings.CURRENT_API_VERSION)):
     try:
         task = perform_fetch_task.AsyncResult(uid)
-        logger.info(task.state)
         response = {}
         if task.state == 'PENDING':
             # job did not start yet
