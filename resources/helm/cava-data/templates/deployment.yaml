@@ -30,23 +30,16 @@ spec:
       containers:
         - name: {{ $serviceName }}
           env:
-            # === Gunicorn Settings Hardcoded here ======
+            # === Uvicorn Settings Hardcoded here ======
             # Since fsspec doesn't support uvloop, defaults to asyncio for now ...
-            - name: WORKER_CLASS
-              value: "uvicorn.workers.UvicornH11Worker"
-            # Defaults to 1 worker per core so it can be scaled via multiple pods ...
-            # Set scaling with replicas of this pod
-            - name: WORKERS_PER_CORE
+            - name: WORKERS
               value: "1"
-            - name: WEB_CONCURRENCY
-              value: "1"
-            - name: MAX_WORKERS
-              value: "1" 
+            {{- if .Values.development }}
+            - name: DEVELOPMENT
+              value: "true"
+            {{- end }}
           {{- if .Values.env }}
             {{- toYaml .Values.env | nindent 12 }}
-          {{- end }}
-          {{- if .Values.development }}
-          args: ["/start-reload.sh"]
           {{- end }}
           image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
           imagePullPolicy: {{ .Values.image.pullPolicy }}
