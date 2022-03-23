@@ -1,5 +1,9 @@
-ARG CONDA_VERSION=4.9.2
-ARG PYTHON_VERSION=3.7
+ARG CONDA_VERSION=4.12.0-0
+ARG PYTHON_VERSION=3.8
 
-FROM cormorack/uvicorn-gunicorn:python${PYTHON_VERSION}-conda${CONDA_VERSION}
-COPY . /app
+FROM condaforge/mambaforge:${CONDA_VERSION}
+COPY ./ /app
+RUN mamba env update -n base -f /app/environment.yaml
+RUN which pip && pip install -e /app
+
+CMD [ "cava_data" ]

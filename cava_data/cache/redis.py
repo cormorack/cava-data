@@ -1,7 +1,7 @@
 import aioredis
 from aioredis.exceptions import ConnectionError
 from typing import Optional
-from app.core.config import settings
+from cava_data.core.config import settings
 import time
 import logging
 

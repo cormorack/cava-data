@@ -1,19 +1,19 @@
 import os
 import fsspec
 
-from typing import Dict, List
+from typing import Any, Dict, List
 from pydantic import BaseSettings
 
 
 class Settings(BaseSettings):
-    SERVICE_NAME = "Cabled Array Data Access Service"
-    SERVICE_ID = "data"
-    OPENAPI_URL = f"/{SERVICE_ID}/openapi.json"
-    DOCS_URL = f"/{SERVICE_ID}/"
-    SERVICE_DESCRIPTION = """Data service for Interactive Oceans."""
+    SERVICE_NAME: str = "Cabled Array Data Access Service"
+    SERVICE_ID: str = "data"
+    OPENAPI_URL: str = f"/{SERVICE_ID}/openapi.json"
+    DOCS_URL: str = f"/{SERVICE_ID}/"
+    SERVICE_DESCRIPTION: str = """Data service for Interactive Oceans."""
 
     # API VERSION
-    CURRENT_API_VERSION = 2.0
+    CURRENT_API_VERSION: float = 2.0
 
     CORS_ORIGINS: List[str] = [
         "http://localhost",
@@ -29,9 +29,11 @@ class Settings(BaseSettings):
         "https://cava-portal.netlify.app",
     ]
 
-    BASE_PATH: str = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    BASE_PATH: str = os.path.dirname(
+        os.path.dirname(os.path.abspath(__file__))
+    )
 
-    FILE_SYSTEMS: Dict = {
+    FILE_SYSTEMS: Dict[str, Any] = {
         "minio_s3": fsspec.filesystem(
             "s3", client_kwargs={"endpoint_url": "http://minio:9000"}
         ),
@@ -53,9 +55,19 @@ class Settings(BaseSettings):
     DATA_CATALOG_FILE: str = "https://ooi-data.github.io/catalog.yaml"
 
     # Message queue
-    RABBITMQ_URI: str = os.environ.get("RABBITMQ_URI", "amqp://guest@rabbitmq-service:5672//")
+    RABBITMQ_URI: str = "amqp://guest@rabbitmq-service:5672//"
 
     # Cache service
-    REDIS_URI: str = os.environ.get("REDIS_URI", "redis://redis-service")
+    REDIS_URI: str = "redis://redis-service"
+
+    # Uvicorn config
+    HOST: str = "0.0.0.0"
+    PORT: int = 80
+    LOG_LEVEL: str = "info"
+    LOOP: str = "auto"
+    HTTP: str = "auto"
+    WORKERS: int = 1
+    DEVELOPMENT: bool = False
+
 
 settings = Settings()

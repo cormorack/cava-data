@@ -9,14 +9,11 @@ services:
     ports:
       - 8000:80
       - 8787:8787
-    command: /start-reload.sh
     volumes:
       - ../../:/app/:consistent
     environment:
       - AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID}
       - AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}
-      - LOOP=asyncio
-      - HTTP=h11
       - GOOGLE_SERVICE_JSON=${GOOGLE_SERVICE_JSON}
       - REDIS_URI=redis://redis-service
     networks:
@@ -26,7 +23,9 @@ services:
       context: ../../
       dockerfile: ./resources/docker/Dockerfile
     image: cormorack/cava-data:${TAG}
-    command: celery -A app.api.workers.tasks worker -E -l info -Q data-queue -c 1
+    deploy:
+      replicas: 2
+    command: celery -A cava_data.api.workers.tasks worker -E -l info -Q data-queue -c 1 -P solo
     volumes:
       - ../../:/app/:consistent
     environment:

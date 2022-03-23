@@ -139,3 +139,6 @@ dask-worker-space
 # git-crypt
 crypt.key
 
+# version file
+cava_data/version.py
+
