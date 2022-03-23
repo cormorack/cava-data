@@ -3,6 +3,26 @@ entries:
   cava-data:
   - apiVersion: v2
     appVersion: 0.1.0
+    created: "2022-03-23T22:33:24.091683048Z"
+    dependencies:
+    - condition: rabbitmq.enabled
+      name: rabbitmq
+      repository: https://charts.bitnami.com/bitnami
+      version: 8.11.5
+    - condition: redis.enabled
+      name: redis
+      repository: https://charts.bitnami.com/bitnami
+      version: 12.10.0
+    description: Cava Data Service Helm Chart
+    digest: dd13d3a9544b5d35c226fac926fcbec07d2a76cd66a773a6d663c6cdd4798de4
+    icon: https://interactiveoceans.washington.edu/wp-content/uploads/2018/12/interactive-oceans-logo-symbol-only_sm-150x150.png
+    name: cava-data
+    type: application
+    urls:
+    - https://cormorack.github.io/cava-data/cava-data-0.1.4-rc.4.tgz
+    version: 0.1.4-rc.4
+  - apiVersion: v2
+    appVersion: 0.1.0
     created: "2022-03-22T18:31:56.552107414Z"
     dependencies:
     - condition: rabbitmq.enabled
@@ -1072,4 +1092,4 @@ entries:
     urls:
     - https://cormorack.github.io/cava-data/cava-data-0.1.0.tgz
     version: 0.1.0
-generated: "2022-03-22T18:31:56.541552677Z"
+generated: "2022-03-23T22:33:24.078929304Z"
