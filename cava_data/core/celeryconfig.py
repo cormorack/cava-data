@@ -4,8 +4,9 @@ from .config import settings
 broker_url = settings.RABBITMQ_URI
 
 task_routes = {
-    "app.api.workers.tasks.perform_fetch_task": {"queue": "data-queue"}
+    "cava_data.api.workers.tasks.perform_fetch_task": {"queue": "data-queue"}
 }
+task_create_missing_queues = True
 
 # Results configs
 result_backend = settings.REDIS_URI

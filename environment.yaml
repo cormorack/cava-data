@@ -1,4 +1,3 @@
-name: app-env
 channels:
   - conda-forge
 dependencies:
@@ -19,9 +18,7 @@ dependencies:
   - dask
   - dask-kubernetes
   - netcdf4
-  - s3fs==0.5.2
-  - fsspec==0.8.7
-  - aiobotocore==1.2.1
+  - s3fs==2022.02.0
   - intake
   - intake-xarray
   - numcodecs
@@ -29,7 +26,6 @@ dependencies:
   - hvplot
   - numba
   - numpy
-  - pip
   - xlrd
   - pyarrow
   - bottleneck
@@ -39,6 +35,4 @@ dependencies:
   - celery
   - pika
   - prometheus-fastapi-instrumentator
-  - pip=22
-  - pip:
-    - git+https://github.com/jhamman/xpublish.git@master
+  - watchgod

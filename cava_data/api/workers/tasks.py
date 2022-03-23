@@ -4,7 +4,7 @@ import functools
 
 import logging
 
-from app.core.celery_app import celery_app
+from cava_data.core.celery_app import celery_app
 from celery.exceptions import SoftTimeLimitExceeded
 from .data_fetcher import fetch
 

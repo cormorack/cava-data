@@ -12,10 +12,10 @@ from dask.utils import memory_repr
 import numpy as np
 import aioredis
 
-from app.core.celery_app import celery_app
-from app.core.celeryconfig import result_expires
-from app.core.config import settings
-from app.cache.redis import redis_dependency
+from cava_data.core.celery_app import celery_app
+from cava_data.core.celeryconfig import result_expires
+from cava_data.core.config import settings
+from cava_data.cache.redis import redis_dependency
 from ...store import CENTRAL_STORE
 from ..utils import get_ds
 from ...models import DataRequest, CancelConfig
@@ -119,6 +119,7 @@ async def view_data_stream_dataset(data_stream: str) -> Any:
 async def get_job(uid: str, version: str = str(settings.CURRENT_API_VERSION)):
     try:
         task = perform_fetch_task.AsyncResult(uid)
+        logger.info(task.state)
         response = {}
         if task.state == 'PENDING':
             # job did not start yet
