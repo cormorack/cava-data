@@ -23,7 +23,7 @@ image:
 replicas:
   min: 1
   max: 2
-  target: 50
+  target: 50 # targetCPUUtilizationPercentage
 
 resources: {}
 env:
