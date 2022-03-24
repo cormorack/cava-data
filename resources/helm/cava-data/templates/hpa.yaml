@@ -14,4 +14,3 @@ spec:
   minReplicas: {{ .Values.replicas.min | default 1 }}
   maxReplicas: {{ .Values.replicas.max | default 4 }}
   targetCPUUtilizationPercentage: {{ .Values.replicas.target | default 50 }}
-{{- end -}}
