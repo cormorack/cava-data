@@ -1,0 +1,16 @@
+{{- $serviceName := default (include "cava-data.name" .) -}}
+apiVersion: autoscaling/v1
+kind: HorizontalPodAutoscaler
+metadata:
+  name: {{ $serviceName }}-cpu
+  labels:
+    {{- include "cava-data.labels" . | nindent 4 }}
+    app.kubernetes.io/component: {{ $serviceName }}
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: {{ $serviceName }}
+  minReplicas: {{ .Values.replicas.min | default 1 }}
+  maxReplicas: {{ .Values.replicas.max | default 4 }}
+  targetCPUUtilizationPercentage: {{ .Values.replicas.target | default 50 }}

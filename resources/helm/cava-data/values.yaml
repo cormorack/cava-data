@@ -17,7 +17,14 @@ image:
   tag: "set-by-chartpress"
   pullSecrets: []
   pullPolicy: Always
-replicas: 1
+
+# Number of replicas settings
+# sets also the horizontal pod autoscaler
+replicas:
+  min: 1
+  max: 2
+  target: 50 # targetCPUUtilizationPercentage
+
 resources: {}
 env:
   - name: AWS_ACCESS_KEY_ID
