@@ -7,7 +7,7 @@ metadata:
     {{- include "cava-data.labels" . | nindent 4 }}
     app.kubernetes.io/component: {{ $serviceName }}
 spec:
-  replicas: {{ .Values.replicas }}
+  replicas: {{ .Values.replicas.min | default 1 }}
   strategy:
     type: RollingUpdate
   selector:
