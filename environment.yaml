@@ -21,6 +21,7 @@ dependencies:
   - s3fs==2022.02.0
   - intake
   - intake-xarray
+  - jinja2==3.0.3
   - numcodecs
   - datashader
   - hvplot
