@@ -6,6 +6,7 @@ dependencies:
   - cytoolz
   - lz4
   - nomkl
+  - gevent
   - fastapi
   - aiofiles
   - uvicorn

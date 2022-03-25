@@ -11,11 +11,16 @@ services:
       - 8787:8787
     volumes:
       - ../../:/app/:consistent
+    links:
+      - "celery-worker:celery-worker"
     environment:
       - AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID}
       - AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}
       - GOOGLE_SERVICE_JSON=${GOOGLE_SERVICE_JSON}
       - REDIS_URI=redis://redis-service
+      - RABBITMQ_URI=amqp://guest@rabbitmq-service:5672//
+      - WORKERS=2
+      - LOG_LEVEL=info
     networks:
       - cava-network
   celery-worker:
@@ -25,7 +30,10 @@ services:
     image: cormorack/cava-data:${TAG}
     deploy:
       replicas: 2
-    command: celery -A cava_data.api.workers.tasks worker -E -l info -Q data-queue -c 1 -P solo
+    command: celery -A cava_data.api.workers.tasks worker -E -l info -Q data-queue -c 1 -P gevent
+    links:
+      - "redis-service:redis-service"
+      - "rabbitmq-service:rabbitmq-service"
     volumes:
       - ../../:/app/:consistent
     environment:

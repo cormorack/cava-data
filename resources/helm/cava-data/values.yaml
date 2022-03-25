@@ -68,6 +68,10 @@ worker:
     - name: RABBITMQ_URI
       value: "amqp://guest@cava-data-rabbitmq:5672//"
   resources: {}
+  pool: "gevent"
+  log_level: "info"
+  queue: "data-queue"
+  tasks: "cava_data.api.workers.tasks"
 
 rabbitmq:
   enabled: true
