@@ -63,7 +63,7 @@ class Settings(BaseSettings):
     # Uvicorn/Gunicorn config
     HOST: str = "0.0.0.0"
     PORT: int = 80
-    LOG_LEVEL: str = "debug"
+    LOG_LEVEL: str = "info"
     LOOP: str = "auto"
     HTTP: str = "auto"
     WORKERS: int = 1
