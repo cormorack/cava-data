@@ -55,12 +55,12 @@ class Settings(BaseSettings):
     DATA_CATALOG_FILE: str = "https://ooi-data.github.io/catalog.yaml"
 
     # Message queue
-    RABBITMQ_URI: str = "amqp://guest@rabbitmq-service:5672//"
+    RABBITMQ_URI: str = "amqp://guest@localhost:5672//"
 
     # Cache service
-    REDIS_URI: str = "redis://redis-service"
+    REDIS_URI: str = "redis://localhost"
 
-    # Uvicorn config
+    # Uvicorn/Gunicorn config
     HOST: str = "0.0.0.0"
     PORT: int = 80
     LOG_LEVEL: str = "info"
@@ -68,6 +68,10 @@ class Settings(BaseSettings):
     HTTP: str = "auto"
     WORKERS: int = 1
     DEVELOPMENT: bool = False
+    GRACEFUL_TIMEOUT: str = "120"
+    TIMEOUT: str = "120"
+    KEEP_ALIVE: str = "5"
+    WORKER_CLASS: str = "uvicorn.workers.UvicornWorker"
 
 
 settings = Settings()
