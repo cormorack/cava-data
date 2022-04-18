@@ -37,6 +37,7 @@ dependencies:
   - celery
   - pika
   - prometheus-fastapi-instrumentator
+  - pycurl
   - watchgod
   - setuptools<59
   - wheel>=0.29.0
