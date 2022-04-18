@@ -38,3 +38,5 @@ dependencies:
   - pika
   - prometheus-fastapi-instrumentator
   - watchgod
+  - setuptools<59
+  - wheel>=0.29.0
