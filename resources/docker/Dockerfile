@@ -7,6 +7,6 @@ RUN mamba env update -n base -f /app/environment.yaml
 RUN conda info
 RUN conda list
 RUN which pip
-RUN pip install -e /app
+RUN pip install /app
 
 CMD [ "cava_data" ]
