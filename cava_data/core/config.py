@@ -2,7 +2,13 @@ import os
 import fsspec
 
 from typing import Any, Dict, List
-from pydantic import BaseSettings
+from pydantic import BaseSettings, AnyUrl, RedisDsn, validator
+from kombu.utils.url import safequote
+
+
+class MessageQueue(AnyUrl):
+    allowed_schemes = {'sqs', 'amqp', 'amqps'}
+    host_required = False
 
 
 class Settings(BaseSettings):
@@ -55,10 +61,10 @@ class Settings(BaseSettings):
     DATA_CATALOG_FILE: str = "https://ooi-data.github.io/catalog.yaml"
 
     # Message queue
-    RABBITMQ_URI: str = "amqp://guest@localhost:5672//"
+    RABBITMQ_URI: MessageQueue = "amqp://guest@localhost:5672//"
 
     # Cache service
-    REDIS_URI: str = "redis://localhost"
+    REDIS_URI: RedisDsn = "redis://localhost"
 
     # Uvicorn/Gunicorn config
     HOST: str = "0.0.0.0"
@@ -72,6 +78,22 @@ class Settings(BaseSettings):
     TIMEOUT: str = "120"
     KEEP_ALIVE: str = "5"
     WORKER_CLASS: str = "uvicorn.workers.UvicornWorker"
+
+    @validator('RABBITMQ_URI', pre=True)
+    def set_sqs_creds(cls, v):
+        if v.startswith('sqs://'):
+            if ('{aws_access_key}' in v) and ('{aws_secret_key}' in v):
+                aws_access_key = safequote(
+                    os.environ.get('AWS_ACCESS_KEY_ID', '')
+                )
+                aws_secret_key = safequote(
+                    os.environ.get('AWS_SECRET_ACCESS_KEY', '')
+                )
+                return v.format(
+                    aws_access_key=aws_access_key,
+                    aws_secret_key=aws_secret_key,
+                )
+        return v
 
 
 settings = Settings()

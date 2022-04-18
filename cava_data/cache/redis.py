@@ -22,7 +22,7 @@ class RedisDependency:
 
     async def init(self):
         """Initialises the Redis Dependency"""
-        self.redis = await aioredis.from_url(settings.REDIS_URI)
+        self.redis = await aioredis.from_url(str(settings.REDIS_URI))
 
         while not self.connected:
             try:
