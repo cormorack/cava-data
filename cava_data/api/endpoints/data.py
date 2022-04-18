@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta
+from datetime import timedelta
 import logging
 from typing import Any
 from fastapi import APIRouter, Depends
@@ -17,7 +17,6 @@ from cava_data.core.celeryconfig import result_expires
 from cava_data.core.config import settings
 from cava_data.cache.redis import redis_dependency
 from ...store import CENTRAL_STORE
-from ..utils import get_ds
 from ...models import DataRequest, CancelConfig
 from .download import router as download_router
 from .ship_data import router as ship_data_router
@@ -33,11 +32,6 @@ router.include_router(ship_data_router, prefix="/ship")
 
 
 # ------------------ API ROUTES --------------------------------
-@router.get("/")
-def list_datasets():
-    return get_ds()
-
-
 @router.get("/status")
 def get_service_status():
     return {"status": "running", "message": "Data service is up."}

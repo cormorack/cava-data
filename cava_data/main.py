@@ -1,18 +1,14 @@
 import logging
-import os
 
 
 from fastapi import FastAPI
 from starlette.middleware.cors import CORSMiddleware
-from starlette.staticfiles import StaticFiles
-from starlette.templating import Jinja2Templates
 
 from prometheus_fastapi_instrumentator import Instrumentator
 
-from .api.main import api_router
 from .api.endpoints import data
 from .core.config import settings
-from .scripts import LoadDataCatalog, LoadShipData
+from .scripts import LoadDataCatalog
 from .cache.redis import RedisDependency
 
 logging.root.setLevel(level=logging.INFO)
@@ -27,11 +23,6 @@ app = FastAPI(
     description=settings.SERVICE_DESCRIPTION,
 )
 
-app.state.static = StaticFiles(directory=os.path.join(settings.BASE_PATH, "static"))
-app.state.templates = Jinja2Templates(
-    directory=os.path.join(settings.BASE_PATH, "templates")
-)
-
 app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.CORS_ORIGINS,
@@ -42,9 +33,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# app.include_router(api_router)
 app.include_router(data.router, prefix="/data", tags=["data"])
-app.mount("/data/static", app.state.static, name="static")
 
 
 @app.on_event("startup")

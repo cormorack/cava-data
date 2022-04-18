@@ -4,11 +4,7 @@ from enum import Enum
 
 import dask.dataframe as dd
 
-import pandas as pd
-
-from fastapi import APIRouter
-from fastapi.responses import JSONResponse
-from starlette.requests import Request
+from fastapi import APIRouter, Depends
 
 from ...core.config import settings
 
@@ -17,14 +13,20 @@ logger = logging.getLogger(__name__)
 logging.root.setLevel(level=logging.INFO)
 
 router = APIRouter()
-FS = settings.FILE_SYSTEMS['aws_s3']
+
+
+async def get_s3fs():
+    return settings.FILE_SYSTEMS['aws_s3']
+
+
+async def get_label_map(filesystem=Depends(get_s3fs)):
+    with filesystem.open(f'{settings.CADAI_BUCKET}/{settings.SHIP_DATA_LABEL_MAP}') as f:
+        return json.load(f)
+
 SHIP_S3_MAP = {
     'profile': f"s3://{settings.CADAI_BUCKET}/{settings.SHIP_DATA_PROFILES}",
     'discrete': f"s3://{settings.CADAI_BUCKET}/{settings.SHIP_DATA_DISCRETE}",
 }
-
-with FS.open(f'{settings.CADAI_BUCKET}/{settings.SHIP_DATA_LABEL_MAP}') as f:
-    LABEL_MAP = json.load(f)
 
 
 class ShipDataTypes(str, Enum):
@@ -33,8 +35,8 @@ class ShipDataTypes(str, Enum):
 
 
 @router.get("/")
-def ship_data_details():
-    with FS.open(f'{settings.CADAI_BUCKET}/{settings.SHIP_DATA_SOURCE}') as f:
+def ship_data_details(filesystem=Depends(get_s3fs)):
+    with filesystem.open(f'{settings.CADAI_BUCKET}/{settings.SHIP_DATA_SOURCE}') as f:
         source_json = json.load(f)
     return {
         "profiles_location": SHIP_S3_MAP['profile'],
@@ -44,14 +46,14 @@ def ship_data_details():
 
 
 @router.get("/labels/")
-async def fetch_ship_data_labels():
-    return LABEL_MAP
+async def fetch_ship_data_labels(label_map=Depends(get_label_map)):
+    return label_map
 
 
 @router.get("/labels/{name}")
-async def fetch_ship_data_label_detail(name: str):
-    if name in LABEL_MAP:
-        return LABEL_MAP[name]
+async def fetch_ship_data_label_detail(name: str, label_map=Depends(get_label_map)):
+    if name in label_map:
+        return label_map[name]
     else:
         return {"msg": f"{name} not found."}
 
