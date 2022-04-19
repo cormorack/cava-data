@@ -1,4 +1,5 @@
 import subprocess
+import argparse
 from gunicorn.app.base import BaseApplication
 from cava_data.core.config import settings
 
@@ -55,20 +56,34 @@ def serve():
 
 def worker():
     package_name = __name__.split('.')[0]
+    default_tasks = f'{package_name}.api.workers.tasks'
+    parser = argparse.ArgumentParser(prog="Data worker")
+    parser.add_argument('--tasks', default=default_tasks)
+    parser.add_argument('--log-level', default='info')
+    parser.add_argument('--pool', default='gevent')
+    parser.add_argument('--queue')
+
+    args = parser.parse_args()
+
+    if args.queue is not None:
+        queue = args.queue
+    else:
+        queue = str(settings.DATA_QUEUE)
+
     cmd = [
         'celery',
         '-A',
-        f'{package_name}.api.workers.tasks',
+        args.tasks,
         'worker',
         '-E',
         '-l',
-        'info',
+        args.log_level,
         '-Q',
-        str(settings.DATA_QUEUE),
+        queue,
         '-c',
         '1',
         '-P',
-        'gevent',
+        args.pool,
     ]
 
     subprocess.run(cmd)
