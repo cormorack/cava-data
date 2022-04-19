@@ -37,18 +37,14 @@ spec:
             {{- toYaml .Values.worker.extra_env | nindent 12 }}
           {{- end }}
           args:
-            - celery
-            - -A
-            - {{ .Values.worker.tasks | default "cava_data.api.workers.tasks" }}
-            - worker
-            - -E
-            - -l
+            - cava_data_worker
+            - --tasks
+            - {{ .Values.worker.tasks | default "" }}
+            - --log-level
             - {{ .Values.worker.log_level | default "info" }}
-            - -Q
-            - {{ .Values.worker.queue | default "data-queue" }}
-            - -c
-            - "1"
-            - -P
+            - --queue
+            - {{ .Values.worker.queue | default "" }}
+            - --pool
             - {{ .Values.worker.pool | default "gevent" }}
           image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
           imagePullPolicy: {{ .Values.image.pullPolicy }}

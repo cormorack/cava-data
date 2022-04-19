@@ -1,3 +1,5 @@
+import subprocess
+import argparse
 from gunicorn.app.base import BaseApplication
 from cava_data.core.config import settings
 
@@ -24,6 +26,7 @@ class StandaloneApplication(BaseApplication):
 def serve():
     if not settings.DEVELOPMENT:
         from cava_data.main import app
+
         options = {
             'bind': f"{settings.HOST}:{settings.PORT}",
             'host': settings.HOST,
@@ -38,6 +41,7 @@ def serve():
         StandaloneApplication(app, options).run()
     else:
         import uvicorn
+
         uvicorn.run(
             "cava_data.main:app",
             host=settings.HOST,
@@ -46,5 +50,45 @@ def serve():
             loop=settings.LOOP,
             http=settings.HTTP,
             workers=settings.WORKERS,
-            reload=settings.DEVELOPMENT
+            reload=settings.DEVELOPMENT,
         )
+
+
+def worker():
+    package_name = __name__.split('.')[0]
+    default_tasks = f'{package_name}.api.workers.tasks'
+    parser = argparse.ArgumentParser(prog="Data worker")
+    parser.add_argument('--tasks', type=str, default='')
+    parser.add_argument('--log-level', type=str, default='info')
+    parser.add_argument('--pool', type=str, default='gevent')
+    parser.add_argument('--queue', type=str, default='')
+
+    args = parser.parse_args()
+
+    if args.tasks:
+        tasks = args.tasks
+    else:
+        tasks = default_tasks
+
+    if args.queue:
+        queue = args.queue
+    else:
+        queue = str(settings.DATA_QUEUE)
+
+    cmd = [
+        'celery',
+        '-A',
+        tasks,
+        'worker',
+        '-E',
+        '-l',
+        args.log_level,
+        '-Q',
+        queue,
+        '-c',
+        '1',
+        '-P',
+        args.pool,
+    ]
+
+    subprocess.run(cmd)

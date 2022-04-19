@@ -62,6 +62,7 @@ class Settings(BaseSettings):
 
     # Message queue
     RABBITMQ_URI: MessageQueue = "amqp://guest@localhost:5672//"
+    DATA_QUEUE: str = "data-queue"
 
     # Cache service
     REDIS_URI: RedisDsn = "redis://localhost"

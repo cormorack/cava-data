@@ -3,12 +3,12 @@ from .config import settings
 
 broker_url = str(settings.RABBITMQ_URI)
 if settings.RABBITMQ_URI.scheme == 'sqs':
-    broker_transport_options = {
-        'region': 'us-west-2'
-    }
+    broker_transport_options = {'region': 'us-west-2'}
 
 task_routes = {
-    "cava_data.api.workers.tasks.perform_fetch_task": {"queue": "data-queue"}
+    "cava_data.api.workers.tasks.perform_fetch_task": {
+        "queue": settings.DATA_QUEUE
+    }
 }
 task_create_missing_queues = True
 

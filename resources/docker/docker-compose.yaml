@@ -19,6 +19,7 @@ services:
       - GOOGLE_SERVICE_JSON=${GOOGLE_SERVICE_JSON}
       - REDIS_URI=redis://redis-service
       - RABBITMQ_URI=amqp://guest@rabbitmq-service:5672//
+      - DATA_QUEUE=data-queue-dev
       - WORKERS=2
       - LOG_LEVEL=info
     networks:
@@ -30,7 +31,7 @@ services:
     image: cormorack/cava-data:${TAG}
     deploy:
       replicas: 2
-    command: celery -A cava_data.api.workers.tasks worker -E -l info -Q data-queue -c 1 -P gevent
+    command: cava_data_worker
     links:
       - "redis-service:redis-service"
       - "rabbitmq-service:rabbitmq-service"
@@ -41,6 +42,7 @@ services:
       - AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}
       - REDIS_URI=redis://redis-service
       - RABBITMQ_URI=amqp://guest@rabbitmq-service:5672//
+      - DATA_QUEUE=data-queue-dev
     networks:
       - cava-network
   redis-service:
