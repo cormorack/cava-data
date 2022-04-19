@@ -1,3 +1,4 @@
+import subprocess
 from gunicorn.app.base import BaseApplication
 from cava_data.core.config import settings
 
@@ -24,6 +25,7 @@ class StandaloneApplication(BaseApplication):
 def serve():
     if not settings.DEVELOPMENT:
         from cava_data.main import app
+
         options = {
             'bind': f"{settings.HOST}:{settings.PORT}",
             'host': settings.HOST,
@@ -38,6 +40,7 @@ def serve():
         StandaloneApplication(app, options).run()
     else:
         import uvicorn
+
         uvicorn.run(
             "cava_data.main:app",
             host=settings.HOST,
@@ -46,5 +49,26 @@ def serve():
             loop=settings.LOOP,
             http=settings.HTTP,
             workers=settings.WORKERS,
-            reload=settings.DEVELOPMENT
+            reload=settings.DEVELOPMENT,
         )
+
+
+def worker():
+    package_name = __name__.split('.')[0]
+    cmd = [
+        'celery',
+        '-A',
+        f'{package_name}.api.workers.tasks',
+        'worker',
+        '-E',
+        '-l',
+        'info',
+        '-Q',
+        str(settings.DATA_QUEUE),
+        '-c',
+        '1',
+        '-P',
+        'gevent',
+    ]
+
+    subprocess.run(cmd)
