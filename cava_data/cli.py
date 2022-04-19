@@ -58,14 +58,19 @@ def worker():
     package_name = __name__.split('.')[0]
     default_tasks = f'{package_name}.api.workers.tasks'
     parser = argparse.ArgumentParser(prog="Data worker")
-    parser.add_argument('--tasks', default=default_tasks)
-    parser.add_argument('--log-level', default='info')
-    parser.add_argument('--pool', default='gevent')
-    parser.add_argument('--queue')
+    parser.add_argument('--tasks', type=str, default='')
+    parser.add_argument('--log-level', type=str, default='info')
+    parser.add_argument('--pool', type=str, default='gevent')
+    parser.add_argument('--queue', type=str, default='')
 
     args = parser.parse_args()
 
-    if args.queue is not None:
+    if args.tasks:
+        tasks = args.tasks
+    else:
+        tasks = default_tasks
+
+    if args.queue:
         queue = args.queue
     else:
         queue = str(settings.DATA_QUEUE)
@@ -73,7 +78,7 @@ def worker():
     cmd = [
         'celery',
         '-A',
-        args.tasks,
+        tasks,
         'worker',
         '-E',
         '-l',
