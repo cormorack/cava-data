@@ -16,7 +16,16 @@ class StackSettings(pydantic.BaseSettings):
     # Default options are optimized for CloudOptimized GeoTIFF
     # For more information on GDAL env see: https://gdal.org/user/configoptions.html
     # or https://developmentseed.org/titiler/advanced/performance_tuning/
-    env: Dict = {}
+    env: Dict = {
+        "DATA_QUEUE": "data-queue",
+        "OOI_USERNAME": "XXXXXXXX",
+        "OOI_TOKEN": "XXXXXXXXXXX",
+        "AWS_ACCESS_KEY_ID": "XXXXXXXXX",
+        "AWS_SECRET_ACCESS_KEY": "XXXXXXXXX",
+        "REDIS_URI": "redis://localhost",
+        "RABBITMQ_URI": "amqp://guest@localhost:5672//",
+        "GOOGLE_SERVICE_JSON": "mybucket/service-json.json"
+    }
 
     ###########################################################################
     # AWS LAMBDA
