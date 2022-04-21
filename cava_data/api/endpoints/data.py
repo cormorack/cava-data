@@ -10,7 +10,7 @@ import msgpack
 import xarray as xr
 from dask.utils import memory_repr
 import numpy as np
-import aioredis
+import redis.asyncio as aioredis
 
 from cava_data.core.celery_app import celery_app
 from cava_data.core.celeryconfig import result_expires

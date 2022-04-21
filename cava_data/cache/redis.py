@@ -1,5 +1,5 @@
-import aioredis
-from aioredis.exceptions import ConnectionError
+from redis.exceptions import ConnectionError
+import redis.asyncio as aioredis
 from typing import Optional
 from cava_data.core.config import settings
 import time
