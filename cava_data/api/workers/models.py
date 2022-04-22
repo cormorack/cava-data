@@ -5,11 +5,8 @@ import dask
 import itertools as it
 from dateutil import parser
 from typing import Union
-import fsspec
 import zarr
 import numpy as np
-import s3fs
-import aiobotocore
 
 from dask.utils import memory_repr
 import dask.array as da

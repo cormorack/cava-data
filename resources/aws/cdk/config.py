@@ -13,6 +13,14 @@ class StackSettings(pydantic.BaseSettings):
     owner: Optional[str]
     project: str = "CAVA"
 
+    vpc: Optional[str]
+    security_group: Optional[str]
+    user_role: Optional[str]
+
+    # Stack environment
+    region: str = "us-west-2"
+    account_id: str = "123556123145"
+
     # Default options are optimized for CloudOptimized GeoTIFF
     # For more information on GDAL env see: https://gdal.org/user/configoptions.html
     # or https://developmentseed.org/titiler/advanced/performance_tuning/
@@ -20,8 +28,6 @@ class StackSettings(pydantic.BaseSettings):
         "DATA_QUEUE": "data-queue",
         "OOI_USERNAME": "XXXXXXXX",
         "OOI_TOKEN": "XXXXXXXXXXX",
-        "AWS_ACCESS_KEY_ID": "XXXXXXXXX",
-        "AWS_SECRET_ACCESS_KEY": "XXXXXXXXX",
         "REDIS_URI": "redis://localhost",
         "RABBITMQ_URI": "amqp://guest@localhost:5672//",
         "GOOGLE_SERVICE_JSON": "mybucket/service-json.json"

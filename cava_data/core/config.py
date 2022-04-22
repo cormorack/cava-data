@@ -6,11 +6,6 @@ from pydantic import BaseSettings, AnyUrl, RedisDsn, validator
 from kombu.utils.url import safequote
 
 
-class MessageQueue(AnyUrl):
-    allowed_schemes = {'sqs', 'amqp', 'amqps'}
-    host_required = False
-
-
 class Settings(BaseSettings):
     SERVICE_NAME: str = "Cabled Array Data Access Service"
     SERVICE_ID: str = "data"
@@ -61,7 +56,7 @@ class Settings(BaseSettings):
     DATA_CATALOG_FILE: str = "https://ooi-data.github.io/catalog.yaml"
 
     # Message queue
-    RABBITMQ_URI: MessageQueue = "amqp://guest@localhost:5672//"
+    RABBITMQ_URI: str = "amqp://guest@localhost:5672//"
     DATA_QUEUE: str = "data-queue"
 
     # Cache service

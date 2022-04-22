@@ -2,7 +2,7 @@ import datetime
 from .config import settings
 
 broker_url = str(settings.RABBITMQ_URI)
-if settings.RABBITMQ_URI.scheme == 'sqs':
+if settings.RABBITMQ_URI.startswith('sqs://'):
     broker_transport_options = {'region': 'us-west-2'}
 
 task_routes = {

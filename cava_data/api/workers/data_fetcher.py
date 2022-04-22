@@ -13,11 +13,7 @@ import numpy as np
 import xarray as xr
 import zarr
 import fsspec
-import datashader
-import hvplot.xarray  # noqa
 import pandas as pd
-from dask_kubernetes import KubeCluster, make_pod_spec
-from dask.distributed import Client
 from dateutil import parser
 import math
 from typing import Union
@@ -72,7 +68,7 @@ def _plot_merged_dataset(
     plot_size: tuple = (888, 450),
 ) -> dict:
     """Use hvplot to plot the dataset and parse the plot dataframe"""
-
+    import hvplot.xarray  # noqa
     def _change_z(k):
         if k == 'z':
             return 'color'
@@ -84,7 +80,6 @@ def _plot_merged_dataset(
 
     # To filter resulting dataframe only grab non-empty parameters
     column_filter = [v for k, v in plot_params.items() if v]
-
     if plot_params["color"]:
         color_column = (
             f"{plot_params['x']}_{plot_params['y']} {plot_params['color']}"
@@ -96,6 +91,7 @@ def _plot_merged_dataset(
             **plot_params,
         )
     elif rasterize:
+        import datashader
         color_column = (
             f"{plot_params['x']}_{plot_params['y']} {plot_params['y']}"
         )
@@ -217,6 +213,7 @@ def determine_workers(
         and min, max for number of workers
 
     """
+    from dask_kubernetes import make_pod_spec
     max_workers = int(np.ceil(max_mem_size / memory_limit))
     min_workers = int(np.ceil(max_workers / 10))
     image = f"{image_repo}/{image_name}:{image_tag}"
@@ -323,6 +320,8 @@ def fetch(
     # TODO: Figure out using distributed from a
     #       central dask cluster
     if max_mem_size > data_threshold:
+        # from dask_kubernetes import KubeCluster
+        # from dask.distributed import Client
         # Spinning up the dask cluster is too slow
         # disabled for now
         # image_repo, image_name, image_tag = (

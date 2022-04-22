@@ -36,10 +36,10 @@ app.add_middleware(
 app.include_router(data.router, prefix="/data", tags=["data"])
 
 
-@app.on_event("startup")
-async def startup_event():
-    LoadDataCatalog()
-    await RedisDependency().init()
+# @app.on_event("startup")
+# async def startup_event():
+    # LoadDataCatalog()
+    # await RedisDependency().init()
     # LoadShipData()
 
 # Prometheus instrumentation

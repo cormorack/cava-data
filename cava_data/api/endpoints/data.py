@@ -11,15 +11,15 @@ import xarray as xr
 from dask.utils import memory_repr
 import numpy as np
 import redis.asyncio as aioredis
+import intake
 
 from cava_data.core.celery_app import celery_app
 from cava_data.core.celeryconfig import result_expires
 from cava_data.core.config import settings
 from cava_data.cache.redis import redis_dependency
-from ...store import CENTRAL_STORE
 from ...models import DataRequest, CancelConfig
 from .download import router as download_router
-from .ship_data import router as ship_data_router
+# from .ship_data import router as ship_data_router
 from ..workers.tasks import perform_fetch_task
 from ..workers.data_fetcher import get_delayed_ds
 
@@ -28,7 +28,10 @@ logging.root.setLevel(level=logging.INFO)
 
 router = APIRouter()
 router.include_router(download_router, prefix="/download")
-router.include_router(ship_data_router, prefix="/ship")
+# router.include_router(ship_data_router, prefix="/ship")
+
+async def get_catalog():
+    return intake.open_catalog(settings.DATA_CATALOG_FILE)
 
 
 # ------------------ API ROUTES --------------------------------
@@ -39,25 +42,16 @@ def get_service_status():
 
 # ------------ CATALOG ENDPOINTS ------------------------
 @router.get("/catalog")
-async def get_catalog(streams_only: bool = False) -> JSONResponse:
+async def get_catalog(streams_only: bool = False, catalog = Depends(get_catalog)) -> JSONResponse:
     try:
-        if "intake_catalog" in CENTRAL_STORE:
-            catalog = CENTRAL_STORE["intake_catalog"]
-            if not streams_only:
-                result = yaml.load(catalog.yaml(), Loader=yaml.SafeLoader)[
-                    'sources'
-                ]
-                result[catalog.name].update({"data_streams": list(catalog)})
-            else:
-                result = {"data_streams": list(catalog)}
-            return JSONResponse(status_code=200, content=result)
+        if not streams_only:
+            result = yaml.load(catalog.yaml(), Loader=yaml.SafeLoader)[
+                'sources'
+            ]
+            result[catalog.name].update({"data_streams": list(catalog)})
         else:
-            return JSONResponse(
-                status_code=200,
-                content={
-                    "message": "Catalog not available. Please try again in a few minutes."  # noqa
-                },
-            )
+            result = {"data_streams": list(catalog)}
+        return JSONResponse(status_code=200, content=result)
     except Exception as e:
         return JSONResponse(
             status_code=400, content={"message": f"{e}", "type": f"{type(e)}"}
@@ -65,19 +59,10 @@ async def get_catalog(streams_only: bool = False) -> JSONResponse:
 
 
 @router.get("/catalog/{data_stream}")
-async def view_data_stream_catalog(data_stream: str) -> Any:
+async def view_data_stream_catalog(data_stream: str, catalog = Depends(get_catalog)) -> Any:
     try:
-        if "intake_catalog" in CENTRAL_STORE:
-            catalog = CENTRAL_STORE["intake_catalog"]
-            source = catalog[data_stream]
-            return JSONResponse(status_code=200, content=source.describe())
-        else:
-            return JSONResponse(
-                status_code=200,
-                content={
-                    "message": "Catalog not available. Please try again in a few minutes."  # noqa
-                },
-            )
+        source = catalog[data_stream]
+        return JSONResponse(status_code=200, content=source.describe())
     except Exception as e:
         return JSONResponse(
             status_code=400, content={"message": f"{e}", "type": f"{type(e)}"}
@@ -85,21 +70,12 @@ async def view_data_stream_catalog(data_stream: str) -> Any:
 
 
 @router.get("/catalog/{data_stream}/view")
-async def view_data_stream_dataset(data_stream: str) -> Any:
+async def view_data_stream_dataset(data_stream: str, catalog = Depends(get_catalog)) -> Any:
     try:
-        if "intake_catalog" in CENTRAL_STORE:
-            catalog = CENTRAL_STORE["intake_catalog"]
-            dataset = catalog[data_stream].to_dask()
+        dataset = catalog[data_stream].to_dask()
 
-            with xr.set_options(display_style='html'):
-                return HTMLResponse(dataset._repr_html_())
-        else:
-            return JSONResponse(
-                status_code=200,
-                content={
-                    "message": "Catalog not available. Please try again in a few minutes."  # noqa
-                },
-            )
+        with xr.set_options(display_style='html'):
+            return HTMLResponse(dataset._repr_html_())
     except Exception as e:
         return JSONResponse(
             status_code=400, content={"message": f"{e}", "type": f"{type(e)}"}
@@ -229,7 +205,6 @@ async def request_data(
     data_request: DataRequest,
     cache: aioredis.client.Redis = Depends(redis_dependency),
 ):
-    try:
         cache_key = data_request._key
         cached_result = await cache.get(cache_key)
         if cached_result is not None:
@@ -250,13 +225,34 @@ async def request_data(
             "result_url": f"/data/job/{str(request_uuid)}",
             "msg": f"Job {str(request_uuid)} created.",
         }
-    except Exception as e:
-        return JSONResponse(
-            content={
-                "status": "failed",
-                "job_uuid": None,
-                "result_url": None,
-                "msg": f"Error occured: {e}",
-            },
-            status_code=500,
-        )
+    # try:
+    #     cache_key = data_request._key
+    #     cached_result = await cache.get(cache_key)
+    #     if cached_result is not None:
+    #         request_uuid = cached_result.decode('utf-8')
+    #     else:
+    #         task = perform_fetch_task.apply_async(args=(data_request.dict(),))
+    #         request_uuid = task.id
+    #         # expires 5 minutes before the result expires for celery
+    #         expire_time = result_expires - timedelta(minutes=5)
+    #         await cache.set(
+    #             cache_key,
+    #             request_uuid.encode('utf-8'),
+    #             ex=int(expire_time.total_seconds()),
+    #         )
+    #     return {
+    #         "status": "success",
+    #         "job_uuid": str(request_uuid),
+    #         "result_url": f"/data/job/{str(request_uuid)}",
+    #         "msg": f"Job {str(request_uuid)} created.",
+    #     }
+    # except Exception as e:
+    #     return JSONResponse(
+    #         content={
+    #             "status": "failed",
+    #             "job_uuid": None,
+    #             "result_url": None,
+    #             "msg": f"Error occured: {e}",
+    #         },
+    #         status_code=500,
+    #     )
