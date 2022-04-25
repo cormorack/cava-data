@@ -215,6 +215,7 @@ async def request_data(
     data_request: DataRequest,
     cache: aioredis.client.Redis = Depends(redis_dependency),
 ):
+    try:
         cache_key = data_request._key
         cached_result = await cache.get(cache_key)
         if cached_result is not None:
@@ -235,34 +236,13 @@ async def request_data(
             "result_url": f"/data/job/{str(request_uuid)}",
             "msg": f"Job {str(request_uuid)} created.",
         }
-    # try:
-    #     cache_key = data_request._key
-    #     cached_result = await cache.get(cache_key)
-    #     if cached_result is not None:
-    #         request_uuid = cached_result.decode('utf-8')
-    #     else:
-    #         task = perform_fetch_task.apply_async(args=(data_request.dict(),))
-    #         request_uuid = task.id
-    #         # expires 5 minutes before the result expires for celery
-    #         expire_time = result_expires - timedelta(minutes=5)
-    #         await cache.set(
-    #             cache_key,
-    #             request_uuid.encode('utf-8'),
-    #             ex=int(expire_time.total_seconds()),
-    #         )
-    #     return {
-    #         "status": "success",
-    #         "job_uuid": str(request_uuid),
-    #         "result_url": f"/data/job/{str(request_uuid)}",
-    #         "msg": f"Job {str(request_uuid)} created.",
-    #     }
-    # except Exception as e:
-    #     return JSONResponse(
-    #         content={
-    #             "status": "failed",
-    #             "job_uuid": None,
-    #             "result_url": None,
-    #             "msg": f"Error occured: {e}",
-    #         },
-    #         status_code=500,
-    #     )
+    except Exception as e:
+        return JSONResponse(
+            content={
+                "status": "failed",
+                "job_uuid": None,
+                "result_url": None,
+                "msg": f"Error occured: {e}",
+            },
+            status_code=500,
+        )
