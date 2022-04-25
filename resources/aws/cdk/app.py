@@ -88,16 +88,23 @@ class titilerLambdaStack(core.Stack):
 
 app = core.App()
 
-perms = []
-# if settings.buckets:
-#     perms.append(
-#         iam.PolicyStatement(
-#             actions=["s3:GetObject"],
-#             resources=[
-#                 f"arn:aws:s3:::{bucket}/{settings.key}" for bucket in settings.buckets
-#             ],
-#         )
-#     )
+perms = [
+    iam.PolicyStatement(
+        actions=['s3:*'],
+        resources=[
+            f"*"
+        ]
+    )
+]
+if settings.is_sqs is True:
+    perms.append(
+        iam.PolicyStatement(
+            actions=['sqs:*'],
+            resources=[
+                f"*"
+            ]
+        )
+    )
 
 
 # Tag infrastructure

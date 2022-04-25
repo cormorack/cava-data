@@ -2,10 +2,12 @@ from datetime import timedelta
 import logging
 from typing import Any
 from fastapi import APIRouter, Depends
-from fastapi.responses import JSONResponse, HTMLResponse, Response
+from fastapi.responses import JSONResponse, HTMLResponse, Response, RedirectResponse
 from starlette.requests import Request
 import yaml
 import msgpack
+import fsspec
+import os
 
 import xarray as xr
 from dask.utils import memory_repr
@@ -88,6 +90,14 @@ async def view_data_stream_dataset(data_stream: str, catalog = Depends(get_catal
 @router.get("/job/{uid}")
 async def get_job(uid: str, version: str = str(settings.CURRENT_API_VERSION)):
     try:
+        results_bucket = "io2-portal-results"
+        cache_location = f"s3://{results_bucket}"
+        object_url = f"https://{results_bucket}.s3.{settings.REGION}.amazonaws.com/{uid}"
+        fs = fsspec.get_mapper(cache_location).fs
+        target_url = os.path.join(
+            cache_location, uid
+        )
+
         task = perform_fetch_task.AsyncResult(uid)
         response = {}
         if task.state == 'PENDING':
@@ -118,11 +128,11 @@ async def get_job(uid: str, version: str = str(settings.CURRENT_API_VERSION)):
         if version == str(settings.CURRENT_API_VERSION):
             return JSONResponse(status_code=200, content=response)
         elif version == "2.1":
-            return Response(
-                status_code=200,
-                content=msgpack.packb(response),
-                media_type="application/x-msgpack",
-            )
+            if response.get('status') == "success" and fs.exists(target_url):
+                    return RedirectResponse(object_url)
+            with fs.open(target_url, mode='wb') as f:
+                f.write(msgpack.packb(response))
+            return RedirectResponse(object_url)
         else:
             return JSONResponse(
                 status_code=400, content=f"Version {version} is invalid"
