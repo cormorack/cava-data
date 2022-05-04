@@ -1,7 +1,7 @@
 """Construct App."""
 
 import os
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Set
 
 from aws_cdk import aws_apigatewayv2 as apigw
 from aws_cdk import aws_apigatewayv2_integrations as apigw_integrations
@@ -15,9 +15,9 @@ from config import StackSettings
 settings = StackSettings()
 
 
-class titilerLambdaStack(core.Stack):
+class cavaDataLambdaStack(core.Stack):
     """
-    Titiler Lambda Stack
+    Cava Data Lambda Stack
 
     This code is freely adapted from
     - https://github.com/leothomas/titiler/blob/10df64fbbdd342a0762444eceebaac18d8867365/stack/app.py author: @leothomas
@@ -39,6 +39,8 @@ class titilerLambdaStack(core.Stack):
         security_group: Optional[str] = None,
         user_role: Optional[str] = None,
         env: Optional[core.Environment] = None,
+        services_elb: Optional[str] = None,
+        extra_routes: Optional[Set] = None,
         **kwargs: Any,
     ) -> None:
         """Define stack."""
@@ -76,14 +78,25 @@ class titilerLambdaStack(core.Stack):
         for perm in permissions:
             lambda_function.add_to_role_policy(perm)
 
-        api = apigw.HttpApi(
-            self,
-            f"{id}-endpoint",
-            default_integration=apigw_integrations.HttpLambdaIntegration(
-                f"{id}-integration", handler=lambda_function
+        # Core API that combines all the services
+        core_api = apigw.HttpApi(self, f"{id}-core-api")
+        core_api.add_routes(
+            path="/data/{proxy+}",
+            integration=apigw_integrations.HttpLambdaIntegration(
+                f"{id}-data-proxy-integration", handler=lambda_function
             ),
         )
-        core.CfnOutput(self, "Endpoint", value=api.url)
+        if services_elb is not None:
+            if extra_routes is not None:
+                for route in extra_routes:
+                    core_api.add_routes(
+                        path=f"/{route}/{{proxy+}}",
+                        integration=apigw_integrations.HttpUrlIntegration(
+                            f"{id}-{route}-integration",
+                            url=f"http://{services_elb}/{route}/{{proxy}}"
+                        )
+                    )
+        core.CfnOutput(self, "Endpoint", value=core_api.url)
 
 
 app = core.App()
@@ -117,13 +130,19 @@ for key, value in {
     if value:
         core.Tag.add(app, key, value)
 
+extra_routes = {
+    'metadata',
+    'media',
+    'feed',
+}
+
 
 lambda_stackname = f"{settings.name}-lambda-{settings.stage}"
 stack_env = core.Environment(
     account=settings.account_id,
     region=settings.region
 )
-titilerLambdaStack(
+cavaDataLambdaStack(
     app,
     lambda_stackname,
     memory=settings.memory,
@@ -134,7 +153,9 @@ titilerLambdaStack(
     vpc=settings.vpc,
     security_group=settings.security_group,
     user_role=settings.user_role,
-    env=stack_env
+    env=stack_env,
+    services_elb=settings.services_elb,
+    extra_routes=extra_routes,
 )
 
 app.synth()

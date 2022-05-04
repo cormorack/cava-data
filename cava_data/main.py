@@ -2,6 +2,7 @@ import logging
 
 
 from fastapi import FastAPI
+from fastapi.responses import RedirectResponse
 from starlette.middleware.cors import CORSMiddleware
 
 from prometheus_fastapi_instrumentator import Instrumentator

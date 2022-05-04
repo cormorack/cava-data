@@ -1,16 +1,16 @@
 import os
 import fsspec
 
-from typing import Any, Dict, List
-from pydantic import BaseSettings, AnyUrl, RedisDsn, validator
+from typing import Any, Dict, List, Optional
+from pydantic import BaseSettings, AnyUrl, RedisDsn, root_validator, validator
 from kombu.utils.url import safequote
 
 
 class Settings(BaseSettings):
     SERVICE_NAME: str = "Cabled Array Data Access Service"
     SERVICE_ID: str = "data"
-    OPENAPI_URL: str = f"/{SERVICE_ID}/openapi.json"
-    DOCS_URL: str = f"/{SERVICE_ID}/"
+    OPENAPI_URL: Optional[str]
+    DOCS_URL: Optional[str]
     SERVICE_DESCRIPTION: str = """Data service for Interactive Oceans."""
 
     # API VERSION
@@ -76,6 +76,20 @@ class Settings(BaseSettings):
     TIMEOUT: str = "120"
     KEEP_ALIVE: str = "5"
     WORKER_CLASS: str = "uvicorn.workers.UvicornWorker"
+
+    @root_validator
+    def set_docs_paths(cls, values):
+        service_id = values.get('SERVICE_ID')
+        if values.get('OPENAPI_URL') is None:
+            values.update({
+                'OPENAPI_URL': f"/{service_id}/openapi.json",
+            })
+        
+        if values.get('DOCS_URL') is None:
+            values.update({
+                'DOCS_URL': f"/{service_id}"
+            })
+        return values
 
     @validator('RABBITMQ_URI', pre=True)
     def set_sqs_creds(cls, v):
