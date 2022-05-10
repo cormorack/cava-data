@@ -3,6 +3,7 @@
 import os
 from typing import Any, Dict, List, Optional, Set
 
+from aws_cdk import aws_certificatemanager as acm
 from aws_cdk import aws_apigatewayv2 as apigw
 from aws_cdk import aws_apigatewayv2_integrations as apigw_integrations
 from aws_cdk import aws_iam as iam
@@ -41,6 +42,8 @@ class cavaDataLambdaStack(core.Stack):
         env: Optional[core.Environment] = None,
         services_elb: Optional[str] = None,
         extra_routes: Optional[Set] = None,
+        domain_name: Optional[str] = None,
+        certificate_arn: Optional[str] = None,
         **kwargs: Any,
     ) -> None:
         """Define stack."""
@@ -78,8 +81,20 @@ class cavaDataLambdaStack(core.Stack):
         for perm in permissions:
             lambda_function.add_to_role_policy(perm)
 
+        # Setup custom domain mapping if available
+        default_domain_mapping = None
+        if domain_name is not None:
+            if certificate_arn is None:
+                raise ValueError("Certificate arn is missing, but you have provided domain name!")
+
+            custom_domain = apigw.DomainName(self, f"{id}-domain-name",
+                domain_name=domain_name,
+                certificate=acm.Certificate.from_certificate_arn(self, f"{id}-cert", certificate_arn)
+            )
+            default_domain_mapping = apigw.DomainMappingOptions(domain_name=custom_domain)
+
         # Core API that combines all the services
-        core_api = apigw.HttpApi(self, f"{id}-core-api")
+        core_api = apigw.HttpApi(self, f"{id}-core-api", default_domain_mapping=default_domain_mapping)
         core_api.add_routes(
             path="/data/{proxy+}",
             integration=apigw_integrations.HttpLambdaIntegration(
@@ -156,6 +171,8 @@ cavaDataLambdaStack(
     env=stack_env,
     services_elb=settings.services_elb,
     extra_routes=extra_routes,
+    domain_name=settings.domain_name,
+    certificate_arn=settings.certificate_arn,
 )
 
 app.synth()

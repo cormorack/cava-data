@@ -4,6 +4,7 @@ aws-cdk.aws_lambda==1.152.0
 aws-cdk.aws_ec2==1.152.0
 aws-cdk.aws_apigatewayv2==1.152.0
 aws-cdk.aws_apigatewayv2_integrations==1.152.0
+aws-cdk.aws_certificatemanager==1.152.0
 
 # pydantic settings
 pydantic

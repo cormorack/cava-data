@@ -27,6 +27,8 @@ class StackSettings(pydantic.BaseSettings):
     region: str = "us-west-2"
     account_id: str = "123556123145"
     services_elb: str
+    domain_name: Optional[str]
+    certificate_arn: Optional[str]
 
     # Default options for cava-data service
     env: Dict = {
