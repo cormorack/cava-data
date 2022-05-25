@@ -35,9 +35,7 @@ env:
     value: ""
   - name: OOI_USERNAME
     value: ""
-  - name: REDIS_HOST
-    value: ""
-  - name: REDIS_PORT
+  - name: REDIS_URI
     value: ""
   - name: GOOGLE_SERVICE_JSON
     value: ""
