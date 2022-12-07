@@ -78,6 +78,5 @@ rabbitmq:
 
 redis:
   enabled: true
-  cluster:
+  auth:
     enabled: false
-  usePassword: false
