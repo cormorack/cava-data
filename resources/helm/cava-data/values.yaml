@@ -5,6 +5,8 @@ nameOverride: cava-data
 # fullnameOverride: cava-media
 path: /data
 development: false
+# Include the actual data service API
+includeAPI: true
 service:
   targetPort: 80
   portName: http
