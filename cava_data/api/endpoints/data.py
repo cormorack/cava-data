@@ -2,24 +2,26 @@ from datetime import timedelta
 import logging
 from typing import Any
 from fastapi import APIRouter, Depends
-from fastapi.responses import JSONResponse, HTMLResponse, Response
+from fastapi.responses import JSONResponse, HTMLResponse, Response, RedirectResponse
 from starlette.requests import Request
 import yaml
 import msgpack
+import fsspec
+import os
 
 import xarray as xr
 from dask.utils import memory_repr
 import numpy as np
 import redis.asyncio as aioredis
+import intake
 
 from cava_data.core.celery_app import celery_app
 from cava_data.core.celeryconfig import result_expires
 from cava_data.core.config import settings
 from cava_data.cache.redis import redis_dependency
-from ...store import CENTRAL_STORE
 from ...models import DataRequest, CancelConfig
 from .download import router as download_router
-from .ship_data import router as ship_data_router
+# from .ship_data import router as ship_data_router
 from ..workers.tasks import perform_fetch_task
 from ..workers.data_fetcher import get_delayed_ds
 
@@ -28,7 +30,10 @@ logging.root.setLevel(level=logging.INFO)
 
 router = APIRouter()
 router.include_router(download_router, prefix="/download")
-router.include_router(ship_data_router, prefix="/ship")
+# router.include_router(ship_data_router, prefix="/ship")
+
+async def get_catalog():
+    return intake.open_catalog(settings.DATA_CATALOG_FILE)
 
 
 # ------------------ API ROUTES --------------------------------
@@ -39,25 +44,16 @@ def get_service_status():
 
 # ------------ CATALOG ENDPOINTS ------------------------
 @router.get("/catalog")
-async def get_catalog(streams_only: bool = False) -> JSONResponse:
+async def get_catalog(streams_only: bool = False, catalog = Depends(get_catalog)) -> JSONResponse:
     try:
-        if "intake_catalog" in CENTRAL_STORE:
-            catalog = CENTRAL_STORE["intake_catalog"]
-            if not streams_only:
-                result = yaml.load(catalog.yaml(), Loader=yaml.SafeLoader)[
-                    'sources'
-                ]
-                result[catalog.name].update({"data_streams": list(catalog)})
-            else:
-                result = {"data_streams": list(catalog)}
-            return JSONResponse(status_code=200, content=result)
+        if not streams_only:
+            result = yaml.load(catalog.yaml(), Loader=yaml.SafeLoader)[
+                'sources'
+            ]
+            result[catalog.name].update({"data_streams": list(catalog)})
         else:
-            return JSONResponse(
-                status_code=200,
-                content={
-                    "message": "Catalog not available. Please try again in a few minutes."  # noqa
-                },
-            )
+            result = {"data_streams": list(catalog)}
+        return JSONResponse(status_code=200, content=result)
     except Exception as e:
         return JSONResponse(
             status_code=400, content={"message": f"{e}", "type": f"{type(e)}"}
@@ -65,19 +61,10 @@ async def get_catalog(streams_only: bool = False) -> JSONResponse:
 
 
 @router.get("/catalog/{data_stream}")
-async def view_data_stream_catalog(data_stream: str) -> Any:
+async def view_data_stream_catalog(data_stream: str, catalog = Depends(get_catalog)) -> Any:
     try:
-        if "intake_catalog" in CENTRAL_STORE:
-            catalog = CENTRAL_STORE["intake_catalog"]
-            source = catalog[data_stream]
-            return JSONResponse(status_code=200, content=source.describe())
-        else:
-            return JSONResponse(
-                status_code=200,
-                content={
-                    "message": "Catalog not available. Please try again in a few minutes."  # noqa
-                },
-            )
+        source = catalog[data_stream]
+        return JSONResponse(status_code=200, content=source.describe())
     except Exception as e:
         return JSONResponse(
             status_code=400, content={"message": f"{e}", "type": f"{type(e)}"}
@@ -85,21 +72,12 @@ async def view_data_stream_catalog(data_stream: str) -> Any:
 
 
 @router.get("/catalog/{data_stream}/view")
-async def view_data_stream_dataset(data_stream: str) -> Any:
+async def view_data_stream_dataset(data_stream: str, catalog = Depends(get_catalog)) -> Any:
     try:
-        if "intake_catalog" in CENTRAL_STORE:
-            catalog = CENTRAL_STORE["intake_catalog"]
-            dataset = catalog[data_stream].to_dask()
+        dataset = catalog[data_stream].to_dask()
 
-            with xr.set_options(display_style='html'):
-                return HTMLResponse(dataset._repr_html_())
-        else:
-            return JSONResponse(
-                status_code=200,
-                content={
-                    "message": "Catalog not available. Please try again in a few minutes."  # noqa
-                },
-            )
+        with xr.set_options(display_style='html'):
+            return HTMLResponse(dataset._repr_html_())
     except Exception as e:
         return JSONResponse(
             status_code=400, content={"message": f"{e}", "type": f"{type(e)}"}
@@ -112,6 +90,14 @@ async def view_data_stream_dataset(data_stream: str) -> Any:
 @router.get("/job/{uid}")
 async def get_job(uid: str, version: str = str(settings.CURRENT_API_VERSION)):
     try:
+        results_bucket = "io2-portal-results"
+        cache_location = f"s3://{results_bucket}"
+        object_url = f"https://{results_bucket}.s3.{settings.REGION}.amazonaws.com/{uid}"
+        fs = fsspec.get_mapper(cache_location).fs
+        target_url = os.path.join(
+            cache_location, uid
+        )
+
         task = perform_fetch_task.AsyncResult(uid)
         response = {}
         if task.state == 'PENDING':
@@ -142,11 +128,11 @@ async def get_job(uid: str, version: str = str(settings.CURRENT_API_VERSION)):
         if version == str(settings.CURRENT_API_VERSION):
             return JSONResponse(status_code=200, content=response)
         elif version == "2.1":
-            return Response(
-                status_code=200,
-                content=msgpack.packb(response),
-                media_type="application/x-msgpack",
-            )
+            if response.get('status') == "success" and fs.exists(target_url):
+                    return RedirectResponse(object_url)
+            with fs.open(target_url, mode='wb') as f:
+                f.write(msgpack.packb(response))
+            return RedirectResponse(object_url)
         else:
             return JSONResponse(
                 status_code=400, content=f"Version {version} is invalid"

@@ -2,8 +2,8 @@ import datetime
 from .config import settings
 
 broker_url = str(settings.RABBITMQ_URI)
-if settings.RABBITMQ_URI.scheme == 'sqs':
-    broker_transport_options = {'region': 'us-west-2'}
+if settings.RABBITMQ_URI.startswith('sqs://'):
+    broker_transport_options = {'region': settings.REGION }
 
 task_routes = {
     "cava_data.api.workers.tasks.perform_fetch_task": {

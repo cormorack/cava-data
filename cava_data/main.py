@@ -2,6 +2,7 @@ import logging
 
 
 from fastapi import FastAPI
+from fastapi.responses import RedirectResponse
 from starlette.middleware.cors import CORSMiddleware
 
 from prometheus_fastapi_instrumentator import Instrumentator
@@ -36,10 +37,10 @@ app.add_middleware(
 app.include_router(data.router, prefix="/data", tags=["data"])
 
 
-@app.on_event("startup")
-async def startup_event():
-    LoadDataCatalog()
-    await RedisDependency().init()
+# @app.on_event("startup")
+# async def startup_event():
+    # LoadDataCatalog()
+    # await RedisDependency().init()
     # LoadShipData()
 
 # Prometheus instrumentation

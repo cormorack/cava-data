@@ -1,9 +1,10 @@
 
 [build-system]
 requires = [
-    "setuptools >= 48",
+    "setuptools >= 48, <59",
     "setuptools_scm[toml] >= 4, <6",
     "setuptools_scm_git_archive",
+    "pycurl<7.45",
     "wheel >= 0.29.0",
 ]
 build-backend = 'setuptools.build_meta'

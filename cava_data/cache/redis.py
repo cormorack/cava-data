@@ -5,8 +5,8 @@ from cava_data.core.config import settings
 import time
 import logging
 
-logger = logging.getLogger('uvicorn')
 logging.root.setLevel(level=logging.INFO)
+logger = logging.getLogger('uvicorn')
 
 
 class RedisDependency:
@@ -22,6 +22,7 @@ class RedisDependency:
 
     async def init(self):
         """Initialises the Redis Dependency"""
+        logger.info("Starting redis connection ...")
         self.redis = await aioredis.from_url(str(settings.REDIS_URI))
 
         while not self.connected:
