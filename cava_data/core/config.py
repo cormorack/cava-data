@@ -46,7 +46,7 @@ class Settings(BaseSettings):
         ),
     }
 
-    DATA_BUCKET: str = 'ooi-data'
+    DATA_BUCKET: str = 'ooi-data-prod'
     CADAI_BUCKET: str = 'ooi-data-cadai'
     SHIP_DATA_FOLDER: str = 'ship_data'
     SHIP_DATA_SOURCE: str = f'{SHIP_DATA_FOLDER}/source.json'

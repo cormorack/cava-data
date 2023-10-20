@@ -24,7 +24,7 @@ class OOIDataset:
     def __init__(
         self,
         dataset_id,
-        bucket_name="ooi-data",
+        bucket_name="ooi-data-prod",
         storage_options={'anon': True},
     ):
         self.dataset_id = dataset_id
