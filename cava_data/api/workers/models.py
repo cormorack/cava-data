@@ -132,6 +132,12 @@ class OOIDataset:
             with dask.config.set(**{'array.slicing.split_large_chunks': True}):
                 data_vars[k] = v.isel(**key)
         return data_vars
+    
+    def _drop_qartod_executed(ds):
+        # dask does not play nicely with `object` data type so we need to drop
+        vars_to_drop = [var for var in ds.variables if 'qartod_executed' in var]
+        clean_ds = ds.drop_vars(vars_to_drop)
+        return clean_ds
 
     def _in_time_range(
         self, time_filter: Union[list, tuple], time_range: Union[list, tuple]
@@ -165,6 +171,7 @@ class OOIDataset:
             for k, v in data_vars.items()
         }
         ds = xr.Dataset(data_vars)
+        ds = self._drop_qartod_executed(ds)
         # new_attrs = self.global_attributes.copy()
         # new_attrs['time_coverage_start'] = ds.time.data[0]
         # new_attrs['time_coverage_end'] = ds.time.data[-1]
