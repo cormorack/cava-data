@@ -2,7 +2,6 @@
 
 from typing import Dict, List, Optional
 
-from pydantic import model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -51,20 +50,3 @@ class StackSettings(BaseSettings):
 
     model_config = SettingsConfigDict(env_prefix="CAVA_DATA_STACK_", env_file=".env")
 
-    # @model_validator(mode='after')
-    # def set_sqs(cls, values):
-    #     env_values = values.get('env')
-    #     rabbitmq_uri = env_values.get('RABBITMQ_URI')
-    #     if not isinstance(rabbitmq_uri, str):
-    #         raise TypeError("RABBITMQ_URI must be a string!")
-        
-    #     if rabbitmq_uri.startswith('sqs://'):
-    #         env_values.update({
-    #             'REGION': values.get('region'),
-    #         })
-    #         values.update({
-    #             'env': env_values,
-    #             'is_sqs': True
-    #         })
-    #         return values
-    #     return values

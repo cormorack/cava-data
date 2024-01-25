@@ -1,13 +1,11 @@
 """Construct App."""
 
 import os
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, Dict, List, Optional
 
 from aws_cdk import App, CfnOutput, Duration, Environment, Stack, Tag
 from aws_cdk import aws_apigatewayv2_alpha as apigw
 from aws_cdk import aws_ec2 as ec2
-from aws_cdk import aws_ecs as ecs
-from aws_cdk import aws_ecs_patterns as ecs_patterns
 from aws_cdk import aws_iam as iam
 from aws_cdk import aws_lambda
 from aws_cdk import aws_logs as logs
@@ -23,9 +21,8 @@ class cavaDataLambdaStack(Stack):
     Titiler Lambda Stack
 
     This code is freely adapted from
-    - https://github.com/leothomas/titiler/blob/10df64fbbdd342a0762444eceebaac18d8867365/stack/app.py author: @leothomas
-    - https://github.com/ciaranevans/titiler/blob/3a4e04cec2bd9b90e6f80decc49dc3229b6ef569/stack/app.py author: @ciaranevans
-
+    - https://developmentseed.org/titiler/deployment/aws/lambda/ @developmentseed
+    - https://github.com/developmentseed/titiler/tree/main/deployment (Using the aws example)
     """
 
     def __init__(
