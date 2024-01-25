@@ -1,34 +1,32 @@
 """CAVA_DATA_STACK Configs."""
-from typing import Dict, Optional
 
-import pydantic
+from typing import Dict, List, Optional
+
+from pydantic import model_validator
+from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
-class StackSettings(pydantic.BaseSettings):
+class StackSettings(BaseSettings):
     """Application settings"""
-
-    class Config:
-        """model config"""
-
-        env_file = ".env"
-        env_prefix = "CAVA_DATA_STACK_"
 
     name: str = "cava-data"
     stage: str = "production"
 
-    owner: Optional[str]
+    owner: Optional[str] = None
+    client: Optional[str] = None
+    owner: Optional[str] = None
     project: str = "CAVA"
 
-    vpc: Optional[str]
-    security_group: Optional[str]
-    user_role: Optional[str]
+    vpc: Optional[str] = None
+    security_group: Optional[str] = None
+    user_role: Optional[str] = None
 
     # Stack environment
     region: str = "us-west-2"
     account_id: str = "123556123145"
-    services_elb: str
-    domain_name: Optional[str]
-    certificate_arn: Optional[str]
+    # services_elb: str
+    domain_name: Optional[str] = None
+    certificate_arn: Optional[str] = None
 
     # Default options for cava-data service
     env: Dict = {
@@ -40,8 +38,6 @@ class StackSettings(pydantic.BaseSettings):
         "GOOGLE_SERVICE_JSON": "mybucket/service-json.json"
     }
     is_sqs: bool = False
-
-
     ###########################################################################
     # AWS LAMBDA
     # The following settings only apply to AWS Lambda deployment
@@ -51,22 +47,24 @@ class StackSettings(pydantic.BaseSettings):
 
     # The maximum of concurrent executions you want to reserve for the function.
     # Default: - No specific limit - account limit.
-    max_concurrent: Optional[int]
+    max_concurrent: Optional[int] = None
 
-    @pydantic.root_validator
-    def set_sqs(cls, values):
-        env_values = values.get('env')
-        rabbitmq_uri = env_values.get('RABBITMQ_URI')
-        if not isinstance(rabbitmq_uri, str):
-            raise TypeError("RABBITMQ_URI must be a string!")
+    model_config = SettingsConfigDict(env_prefix="CAVA_DATA_STACK_", env_file=".env")
+
+    # @model_validator(mode='after')
+    # def set_sqs(cls, values):
+    #     env_values = values.get('env')
+    #     rabbitmq_uri = env_values.get('RABBITMQ_URI')
+    #     if not isinstance(rabbitmq_uri, str):
+    #         raise TypeError("RABBITMQ_URI must be a string!")
         
-        if rabbitmq_uri.startswith('sqs://'):
-            env_values.update({
-                'REGION': values.get('region'),
-            })
-            values.update({
-                'env': env_values,
-                'is_sqs': True
-            })
-            return values
-        return values
+    #     if rabbitmq_uri.startswith('sqs://'):
+    #         env_values.update({
+    #             'REGION': values.get('region'),
+    #         })
+    #         values.update({
+    #             'env': env_values,
+    #             'is_sqs': True
+    #         })
+    #         return values
+    #     return values
