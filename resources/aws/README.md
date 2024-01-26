@@ -2,7 +2,7 @@
 
 The Lambda stack is also deployed by the [AWS CDK](https://aws.amazon.com/cdk/) utility. Under the hood, CDK will create the deployment package required for AWS Lambda, upload it to AWS, and handle the creation of the Lambda and API Gateway resources.
 
-This Lambda deployment is adapted from [Titler](https://github.com/developmentseed/titiler/tree/main/deployment). 
+This Lambda deployment is adapted from [Titiler](https://github.com/developmentseed/titiler/tree/main/deployment). 
 
 1. Install CDK and connect to your AWS account. This step is only necessary once per AWS account.
 
