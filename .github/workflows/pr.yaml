@@ -39,6 +39,8 @@ jobs:
           push: false
           build-args: |
             CONDA_VERSION=${{ env.CONDA_VERSION }}
+            echo "CONDA_VERSION=${CONDA_VERSION}" >> "$GITHUB_ENV"
             PYTHON_VERSION=${{ env.PYTHON_VERSION }}
+            echo "PYTHON_VERSION=${PYTHON_VERSION}" >> "$GITUB_ENV"
           tags: |
             ${{ env.IMAGE_SPEC }}
