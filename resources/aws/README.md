@@ -2,6 +2,8 @@
 
 The Lambda stack is also deployed by the [AWS CDK](https://aws.amazon.com/cdk/) utility. Under the hood, CDK will create the deployment package required for AWS Lambda, upload it to AWS, and handle the creation of the Lambda and API Gateway resources.
 
+This Lambda deployment is adapted from [Titiler](https://github.com/developmentseed/titiler/tree/main/deployment). 
+
 1. Install CDK and connect to your AWS account. This step is only necessary once per AWS account.
 
     ```bash
@@ -19,7 +21,7 @@ The Lambda stack is also deployed by the [AWS CDK](https://aws.amazon.com/cdk/) 
     npm run cdk synth  # Synthesizes and prints the CloudFormation template for this stack
     ```
 
-3. Update settings in a `.env` file.
+3. Update settings in a `.env` file. This is already set in `env.example` so you can go ahead and deploy the stack unless you want to add other settings. 
 
     ```env
     CAVA_DATA_STACK_NAME="cava-data"
