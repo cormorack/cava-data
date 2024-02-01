@@ -23,3 +23,7 @@ To run locally, use `docker-compose`.
     export GOOGLE_SERVICE_JSON=bucket/path/to/google-creds.json
     docker-compose -f resources/docker/docker-compose.yaml up
     ```
+
+--
+# Cava Data Deployment
+You can find steps for cava-data API deployment [here](https://github.com/cormorack/cava-data/tree/master/resources/aws) in the README section.
