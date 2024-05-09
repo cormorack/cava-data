@@ -5,7 +5,7 @@
     "license": "MIT",
     "private": true,
     "dependencies": {
-      "@aws-cdk/aws-lambda-python-alpha": "^2.0.0-alpha.11",
+      "@aws-cdk/aws-lambda-python-alpha": "^2.140.0-alpha.0",
       "aws-cdk-lib": "^2.0.0",
       "constructs": "^10.0.0"
     },
