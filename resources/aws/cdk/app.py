@@ -4,12 +4,12 @@ import os
 from typing import Any, Dict, List, Optional
 
 from aws_cdk import App, CfnOutput, Duration, Environment, Stack, Tag
-from aws_cdk import aws_apigatewayv2_alpha as apigw
+from aws_cdk import aws_apigatewayv2 as apigw
 from aws_cdk import aws_ec2 as ec2
 from aws_cdk import aws_iam as iam
 from aws_cdk import aws_lambda
 from aws_cdk import aws_logs as logs
-from aws_cdk.aws_apigatewayv2_integrations_alpha import HttpLambdaIntegration
+from aws_cdk.aws_apigatewayv2_integrations import HttpLambdaIntegration
 from config import StackSettings
 from constructs import Construct
 
